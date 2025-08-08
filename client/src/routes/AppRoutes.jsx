@@ -75,6 +75,7 @@ export const appRoutes = [
     path: "/restaurant/*",
     component: RestaurantProfile,
     requiresAuth: true,
+    hideHeader: true,
     allowedRoles: ["restaurant"],
     children: [
       {
