@@ -83,6 +83,7 @@ export const appRoutes = [
     path: "/restaurant/*",
     component: RestaurantProfile,
     requiresAuth: true,
+    hideHeader: true,
     allowedRoles: ["restaurant"],
     children: [
       {
@@ -107,6 +108,12 @@ export const appRoutes = [
       },
     ]
   },
+  {
+    path: "/Customerprofile/wallet",
+    component: CustomerWalletDashboard,
+    requiresAuth: true,
+    allowedRoles: ["customer"],
+  } 
 
 
 ]
