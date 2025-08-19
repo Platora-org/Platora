@@ -16,6 +16,9 @@ const AdminDashboard = lazy(() => import("../components/adminProfileComponents/A
 const AdminProfile = lazy(() => import("../pages/AdminProfile"))
 const CustomerWalletDashboard = lazy(() => import("../pages/CustomerWalletDashboard"));
 const RestaurantWallet = lazy(() => import("../components/restaurantProfileComponents/RestaurantWallet"));
+const DeliveryAgentManagement = lazy(() => import("../components/adminProfileComponents/DeliverAgent"))
+const DeliveryAgentDashboard = lazy(() => import("../pages/DeliveryAgentDashboard"));
+const CustomerReservation = lazy(() => import("../components/customerProfileComponents/CustomerReservation"))
 
 export const appRoutes = [
   {
@@ -23,6 +26,13 @@ export const appRoutes = [
     component: LoginPage,
     requiresAuth: false,
     hideHeader: true
+  },
+  {
+    path: "/deliveryagent",
+    component: DeliveryAgentDashboard,
+    requiresAuth: true,
+    hideHeader: true,
+    allowedRoles: ["delivery"],
   },
   {
     path: "/register",
@@ -64,6 +74,10 @@ export const appRoutes = [
         path: "details",
         component: CustomerPersonalDetails,
       },
+      {
+        path: "reservation",
+        component: CustomerReservation,
+      },
     ]
   },
   {
@@ -76,7 +90,6 @@ export const appRoutes = [
     path: "/restaurant/*",
     component: RestaurantProfile,
     requiresAuth: true,
-    hideHeader: true,
     allowedRoles: ["restaurant"],
     children: [
       {
@@ -99,15 +112,11 @@ export const appRoutes = [
         path: "",
         component: AdminDashboard,
       },
+       {
+        path: "deliveryagentmanage",
+        component: DeliveryAgentManagement,
+      },
     ]
   },
-  {
-    path: "/Customerprofile/wallet",
-    component: CustomerWalletDashboard,
-    requiresAuth: true,
-    allowedRoles: ["customer"],
-  } 
-
-
 ]
 

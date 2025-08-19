@@ -1,11 +1,13 @@
 import express from 'express';
 import passport from 'passport';
-import { register, login, logout, me } from '../controllers/authController.js';
+import { register, login, logout, me, addDeliveryAgent, deleteDeliveryAgent } from '../controllers/authController.js';
 import verifyJWT from '../middleware/verifyToken.js';
+import checkRole from '../middleware/requireRole.js';
 
 const router = express.Router();
 
 router.post('/register', register);
+router.post('/addDeliveryAgent', addDeliveryAgent);
 router.post('/login', (req, res, next) => {
   passport.authenticate('local', { session: false }, (err, user, info) => {
     if (err) return next(err);
@@ -16,6 +18,8 @@ router.post('/login', (req, res, next) => {
     login(req, res);
   })(req, res, next);
 });
+
+router.get('/deleteDeliveryAgent/:id',verifyJWT, checkRole('admin') , deleteDeliveryAgent);
 
 router.get('/logout', logout);
 router.get('/me', verifyJWT, me);
