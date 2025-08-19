@@ -16,6 +16,7 @@ const AdminDashboard = lazy(() => import("../components/adminProfileComponents/A
 const AdminProfile = lazy(() => import("../pages/AdminProfile"))
 const DeliveryAgentManagement = lazy(() => import("../components/adminProfileComponents/DeliverAgent"))
 const DeliveryAgentDashboard = lazy(() => import("../pages/DeliveryAgentDashboard"));
+const CustomerReservation = lazy(() => import("../components/customerProfileComponents/CustomerReservation"))
 
 export const appRoutes = [
   {
@@ -53,6 +54,7 @@ export const appRoutes = [
     path: "/customerprofile/*",
     component: CustomerProfile,
     requiresAuth: true,
+    hideHeader: true,
     allowedRoles: ["customer"],
     children: [
       {
@@ -70,6 +72,10 @@ export const appRoutes = [
       {
         path: "details",
         component: CustomerPersonalDetails,
+      },
+      {
+        path: "reservation",
+        component: CustomerReservation,
       },
     ]
   },
