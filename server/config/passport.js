@@ -43,7 +43,7 @@ passport.use(new LocalStrategy({
     callbackURL: process.env.GOOGLE_CALLBACK_URL,
   }, async (accessToken, refreshToken, profile, done) => {
     try {
-      const result = await pool.query('SELECT * FROM users WHERE email = $1', [profile.emails[0].value]);
+      const result = await pool.query("SELECT * FROM users WHERE email = $1 AND account_status != 'deleted'", [profile.emails[0].value]);
       if (result.rows.length > 0) return done(null, result.rows[0]);
 
       const insertRes = await pool.query(`
