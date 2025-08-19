@@ -7,6 +7,7 @@ import cors from 'cors';
 import {configurePassport} from './config/passport.js';
 import authRoutes from './routes/authRoutes.js';
 import customerProfileRoutes from './routes/customerProfileRoutes.js';
+import adminProfileRoutes from './routes/adminProfileRoutes.js'
 
 const app = express();
 const port = 3000;
@@ -32,6 +33,8 @@ configurePassport(passport);
 
 app.use('/api/auth', authRoutes);
 app.use('/customer/profile', customerProfileRoutes);
+app.use('/admin/profile', adminProfileRoutes);
+
 
 app.listen(port, () => {
     console.log(`Server running on port ${3000}`);

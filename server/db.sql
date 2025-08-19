@@ -6,7 +6,7 @@ CREATE TABLE users (
   password TEXT,
   phone VARCHAR(20),
   provider VARCHAR(20),
-  role VARCHAR(20), -- 'customer' or 'restaurant'
+  role VARCHAR(20), -- 'customer' or 'restaurant' or 'admin' or 'delivery'
   google_id VARCHAR(255), -- for Google login
   account_status VARCHAR(20) DEFAULT 'active', -- e.g. 'active', 'suspended', 'deleted'
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -21,6 +21,11 @@ CREATE TABLE customer_profiles (
   address TEXT,
   date_of_birth DATE,
   gender VARCHAR(20) -- e.g. 'male', 'female', 'non-binary', etc.
+);
+
+CREATE TABLE deliveryagent (
+    id SERIAL PRIMARY KEY,
+    status VARCHAR(20) NOT NULL DEFAULT 'inactive'
 );
 
 
