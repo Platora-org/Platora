@@ -14,7 +14,6 @@ const RestaurantProfile = lazy(() => import("../pages/RestaurantProfile"))
 const RestaurantDashboard = lazy(() => import("../components/restaurantProfileComponents/RestaurantDashboard"))
 const AdminDashboard = lazy(() => import("../components/adminProfileComponents/AdminDashboard"))
 const AdminProfile = lazy(() => import("../pages/AdminProfile"))
-const CustomerWalletDashboard = lazy(() => import("../pages/CustomerWalletDashboard"));
 const RestaurantWallet = lazy(() => import("../components/restaurantProfileComponents/RestaurantWallet"));
 
 export const appRoutes = [
@@ -101,13 +100,6 @@ export const appRoutes = [
       },
     ]
   },
-  {
-    path: "/Customerprofile/wallet",
-    component: CustomerWalletDashboard,
-    requiresAuth: true,
-    allowedRoles: ["customer"],
-  } 
-
-
+ 
 ]
 
