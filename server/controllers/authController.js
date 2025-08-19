@@ -56,7 +56,6 @@ export const deleteDeliveryAgent = async (req, res) => {
   }
 };
 
-
 export const addDeliveryAgent = async (req, res) => {
   const { firstName, lastName, email, phone, password, role } = req.body;
   try {
@@ -97,7 +96,7 @@ export const addDeliveryAgent = async (req, res) => {
 
 export const login = (req, res, redirect = false) => {
   const token = generateToken(req.user);
-
+  
   res.cookie('token', token, {
     httpOnly: true,
     secure: false,
@@ -107,7 +106,23 @@ export const login = (req, res, redirect = false) => {
 
   // If query contains ?redirect=true, send redirect instead of JSON
   if (redirect) {
-    return res.redirect('http://localhost:5173/');
+     switch (req.user.role) {
+      case "admin":
+        return res.redirect('http://localhost:5173/admin');
+        break;
+      case "restaurant":
+        return res.redirect('http://localhost:5173/restaurant');
+        break;
+      case "customer":
+        return res.redirect('http://localhost:5173/');
+        break;
+      case "delivery":
+        return res.redirect('http://localhost:5173/deliveryagent');
+        break;
+      default:
+        console.log("Unknown role, redirecting to /login");
+        return res.redirect('http://localhost:5173/login');
+    }
   }
 
   // Default: JSON (local login flow)

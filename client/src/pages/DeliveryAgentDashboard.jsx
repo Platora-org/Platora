@@ -15,6 +15,7 @@ import {
   EyeOff,
   Copy,
   RefreshCcw,
+  LogOut,
 } from "lucide-react";
 
 /**
@@ -133,6 +134,7 @@ const OTPInput = ({ value, onChange, error }) => {
 };
 
 export default function DeliveryAgentDashboard() {
+  const { logout } = useAuth();
   const [driverName] = useState("Dilan Perera");
   const [isActive, setIsActive] = useState(true); // default Active
   const [order, setOrder] = useState(null);
@@ -205,6 +207,10 @@ export default function DeliveryAgentDashboard() {
     ]);
   };
 
+  const handleLogout = () => {
+    logout();
+  };
+
   const emptyState = !order && !allocating;
 
   return (
@@ -229,33 +235,47 @@ export default function DeliveryAgentDashboard() {
             </div>
           </div>
 
-          {/* Status Toggle (hidden while an order is assigned) */}
-          <AnimatePresence initial={false}>
-            {!order && (
-              <motion.button
-                key={isActive ? "active" : "inactive"}
-                onClick={handleToggle}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                className={`px-6 py-3 rounded-full font-bold shadow-xl ${EMERALD.shadow} border-2 transition relative flex items-center gap-2 ${
-                  isActive
-                    ? `${EMERALD.btn} border-emerald-600`
-                    : "bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700"
-                }`}
-                title="Toggle availability"
-              >
-                {isActive ? (
-                  <>
-                    <ShieldCheck className="w-5 h-5" /> Active
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="w-5 h-5 text-rose-500" /> Inactive
-                  </>
-                )}
-              </motion.button>
-            )}
-          </AnimatePresence>
+          <div className="flex items-center gap-3">
+            {/* Status Toggle (hidden while an order is assigned) */}
+            <AnimatePresence initial={false}>
+              {!order && (
+                <motion.button
+                  key={isActive ? "active" : "inactive"}
+                  onClick={handleToggle}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  className={`px-6 py-3 rounded-full font-bold shadow-xl ${EMERALD.shadow} border-2 transition relative flex items-center gap-2 ${
+                    isActive
+                      ? `${EMERALD.btn} border-emerald-600`
+                      : "bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700"
+                  }`}
+                  title="Toggle availability"
+                >
+                  {isActive ? (
+                    <>
+                      <ShieldCheck className="w-5 h-5" /> Active
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="w-5 h-5 text-rose-500" /> Inactive
+                    </>
+                  )}
+                </motion.button>
+              )}
+            </AnimatePresence>
+
+            {/* Logout Button */}
+            <motion.button
+              onClick={handleLogout}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              className="px-4 py-3 rounded-full font-bold shadow-xl bg-rose-500 hover:bg-rose-600 text-white border-2 border-rose-600 transition relative flex items-center gap-2"
+              title="Logout"
+            >
+              <LogOut className="w-5 h-5" />
+              <span className="hidden sm:inline">Logout</span>
+            </motion.button>
+          </div>
         </motion.div>
 
         {/* Top Stats */}
@@ -436,7 +456,7 @@ export default function DeliveryAgentDashboard() {
                 <h2 className="text-xl font-bold text-gray-800 dark:text-white mb-4">Tips</h2>
                 <ul className="list-disc list-inside text-gray-600 dark:text-gray-400 text-sm space-y-2">
                   <li>Keep your status <span className="font-semibold">Active</span> to auto-receive orders.</li>
-                  <li>Verify the customer’s <span className="font-semibold">OTP</span> before completing delivery.</li>
+                  <li>Verify the customer's <span className="font-semibold">OTP</span> before completing delivery.</li>
                   <li>Use the activity panel to review recent actions.</li>
                 </ul>
               </div>
