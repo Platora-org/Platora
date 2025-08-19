@@ -14,7 +14,6 @@ const RestaurantProfile = lazy(() => import("../pages/RestaurantProfile"))
 const RestaurantDashboard = lazy(() => import("../components/restaurantProfileComponents/RestaurantDashboard"))
 const AdminDashboard = lazy(() => import("../components/adminProfileComponents/AdminDashboard"))
 const AdminProfile = lazy(() => import("../pages/AdminProfile"))
-const CustomerWalletDashboard = lazy(() => import("../pages/CustomerWalletDashboard"));
 const RestaurantWallet = lazy(() => import("../components/restaurantProfileComponents/RestaurantWallet"));
 const DeliveryAgentManagement = lazy(() => import("../components/adminProfileComponents/DeliverAgent"))
 const DeliveryAgentDashboard = lazy(() => import("../pages/DeliveryAgentDashboard"));
