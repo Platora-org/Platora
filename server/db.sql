@@ -2,7 +2,7 @@ CREATE TABLE users (
   id SERIAL PRIMARY KEY,
   first_name VARCHAR(50),
   last_name VARCHAR(50),
-  email VARCHAR(100) UNIQUE,
+  email VARCHAR(100),
   password TEXT,
   phone VARCHAR(20),
   provider VARCHAR(20),
@@ -25,6 +25,7 @@ CREATE TABLE customer_profiles (
 
 CREATE TABLE deliveryagent (
     id SERIAL PRIMARY KEY,
+    user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
     status VARCHAR(20) NOT NULL DEFAULT 'inactive'
 );
 
