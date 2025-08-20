@@ -37,3 +37,18 @@ CREATE TABLE restaurant_profiles (
   restaurant_name VARCHAR(100),
   cuisine_type VARCHAR(50)
 );
+
+--KYC Verification 
+CREATE TABLE kyc_requests (
+    id SERIAL PRIMARY KEY,
+    restaurant_id INT REFERENCES users(id) ON DELETE CASCADE,
+    business_reg_doc TEXT NOT NULL,
+    nic_doc TEXT NOT NULL,
+    bank_account_number VARCHAR(50) NOT NULL,
+    bank_name VARCHAR(100) NOT NULL,
+    branch VARCHAR(100) NOT NULL,
+    tin_number VARCHAR(50) NOT NULL,
+    status VARCHAR(20) DEFAULT 'PENDING', -- PENDING, APPROVED, REJECTED
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
