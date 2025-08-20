@@ -8,11 +8,11 @@ const RoleRedirector = () => {
 
   useEffect(() => {
     if (loading) return;
-   if (!user) {
-    console.log("No user, redirecting to /login");
-    navigate("/login", { replace: true });
-    return;
-  }
+    if (!user) {
+      console.log("No user, redirecting to /login");
+      navigate("/login", { replace: true });
+      return;
+    }
 
     switch (user.role) {
       case "admin":
@@ -23,6 +23,9 @@ const RoleRedirector = () => {
         break;
       case "customer":
         navigate("/", { replace: true });
+        break;
+      case "delivery":
+        navigate("/deliveryagent", { replace: true });
         break;
       default:
         console.log("Unknown role, redirecting to /login");
