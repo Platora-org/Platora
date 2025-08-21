@@ -112,5 +112,13 @@ export const appRoutes = [
       },
     ]
   },
+
+   {
+    path: "/reservation",           // alias so /reservations works
+    component: CustomerReservation,
+    requiresAuth: true,
+    allowedRoles: ["customer"],      // include "guest" if you want guests to access
+  },
+
 ]
 
