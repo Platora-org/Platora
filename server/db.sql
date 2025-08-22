@@ -2,7 +2,7 @@ CREATE TABLE users (
   id SERIAL PRIMARY KEY,
   first_name VARCHAR(50),
   last_name VARCHAR(50),
-  email VARCHAR(100) UNIQUE,
+  email VARCHAR(100),
   password TEXT,
   phone VARCHAR(20),
   provider VARCHAR(20),
@@ -25,6 +25,7 @@ CREATE TABLE customer_profiles (
 
 CREATE TABLE deliveryagent (
     id SERIAL PRIMARY KEY,
+    user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
     status VARCHAR(20) NOT NULL DEFAULT 'inactive'
 );
 
@@ -41,13 +42,32 @@ CREATE TABLE restaurant_profiles (
 CREATE TABLE kyc_requests (
     id SERIAL PRIMARY KEY,
     restaurant_id INT REFERENCES users(id) ON DELETE CASCADE,
-    business_reg_doc TEXT NOT NULL,
-    nic_doc TEXT NOT NULL,
+    
+    business_reg_doc TEXT NOT NULL,  -- file path or cloud storage URL
+    nic_doc TEXT NOT NULL,           -- file path or cloud storage URL
     bank_account_number VARCHAR(50) NOT NULL,
     bank_name VARCHAR(100) NOT NULL,
     branch VARCHAR(100) NOT NULL,
     tin_number VARCHAR(50) NOT NULL,
-    status VARCHAR(20) DEFAULT 'PENDING', -- PENDING, APPROVED, REJECTED
+
+    status VARCHAR(20) DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPROVED','REJECTED')),
+    rejection_reason TEXT, -- optional: why rejected (helps UX)
+
+    reviewed_by INT REFERENCES users(id), -- admin who approved/rejected
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Wallet Table
+CREATE TABLE wallets (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,   -- links to customer/res/admin
+    user_type VARCHAR(20) NOT NULL CHECK (user_type IN ('CUSTOMER','RESTAURANT','ADMIN')),
+
+    currency VARCHAR(10) DEFAULT 'LKR',                   -- preferred currency
+    balance_coins NUMERIC DEFAULT 0,                      -- coins (main internal currency)
+    balance_money NUMERIC DEFAULT 0,                      -- optional: real money for refunds
+
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );

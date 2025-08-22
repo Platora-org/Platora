@@ -22,8 +22,11 @@ const navigationConfig = {
     nav: [
       { label: "Home", path: "/" },
       { label: "Restaurants", path: "/restaurants" },
+      { label: "Reservations", path: "/customerprofile/reservation" },
       { label: "My Orders", path: "/customerprofile/orders" },
       { label: "About Us", path: "/about" },
+     
+
     ],
     showProfile: true
   },
