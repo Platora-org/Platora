@@ -18,6 +18,7 @@ const RestaurantWallet = lazy(() => import("../components/restaurantProfileCompo
 const DeliveryAgentManagement = lazy(() => import("../components/adminProfileComponents/DeliverAgent"))
 const DeliveryAgentDashboard = lazy(() => import("../pages/DeliveryAgentDashboard"));
 const CustomerReservation = lazy(() => import("../components/customerProfileComponents/CustomerReservation"))
+const kycrequests = lazy(() => import("../components/adminProfileComponents/AdminKycApproval"));
 
 export const appRoutes = [
   {
@@ -111,9 +112,13 @@ export const appRoutes = [
         path: "",
         component: AdminDashboard,
       },
-       {
+      {
         path: "deliveryagentmanage",
         component: DeliveryAgentManagement,
+      },
+      {
+        path: "kycrequests",
+        component: kycrequests,
       },
     ]
   },
