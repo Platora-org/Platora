@@ -17,6 +17,8 @@ const AdminProfile = lazy(() => import("../pages/AdminProfile"))
 const DeliveryAgentManagement = lazy(() => import("../components/adminProfileComponents/DeliverAgent"))
 const DeliveryAgentDashboard = lazy(() => import("../pages/DeliveryAgentDashboard"));
 const CustomerReservation = lazy(() => import("../components/customerProfileComponents/CustomerReservation"))
+const ReservationList = lazy(() => import("../components/customerProfileComponents/ReservationList"))
+
 
 export const appRoutes = [
   {
@@ -38,18 +40,21 @@ export const appRoutes = [
     requiresAuth: false,
     hideHeader: true
   },
+  
   {
     path: "*",
     component: NotFound,
     requiresAuth: false,
     hideHeader: true,
   },
+
   {
     path: "/",
     component: Home,
     requiresAuth: true,
     allowedRoles: ["customer", "guest"],
   },
+
   {
     path: "/customerprofile/*",
     component: CustomerProfile,
@@ -72,18 +77,21 @@ export const appRoutes = [
         path: "details",
         component: CustomerPersonalDetails,
       },
-      {
-        path: "reservation",
-        component: CustomerReservation,
+       {
+        path: "reservations",
+        component: ReservationList,
       },
+     
     ]
   },
+
   {
     path: "/redirect",
     component: RedirectPage,
     requiresAuth: false,
     hideHeader: true
   },
+
   {
     path: "/restaurant/*",
     component: RestaurantProfile,
@@ -96,6 +104,7 @@ export const appRoutes = [
       },
     ]
   },
+
    {
     path: "/admin/*",
     component: AdminProfile,
@@ -114,10 +123,10 @@ export const appRoutes = [
   },
 
    {
-    path: "/reservation",           // alias so /reservations works
+    path: "/reservations",           
     component: CustomerReservation,
     requiresAuth: true,
-    allowedRoles: ["customer"],      // include "guest" if you want guests to access
+    allowedRoles: ["customer"],      
   },
 
 ]
