@@ -35,7 +35,9 @@ const ProfileButton = ({ scrolled, onLogout, userRole = 'customer' }) => {
 
         if (user.role === 'restaurant') {
             // Try restaurant name from profile
+            
             const restaurantName = user.restaurantName;
+            console.log(user);
             if (restaurantName) return restaurantName;
         }
 
