@@ -133,7 +133,7 @@ export default function TableAvailability() {
   return (
     <div className="min-h-screen bg-emerald-50/50 text-gray-800 dark:bg-gray-900 dark:text-white">
       {/* Page container */}
-      <div className="mx-auto max-w-7xl px-6 md:px-10 py-8">
+      <div className="mx-auto max-w-7xl px-6 md:px-6 py-8">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold">Table Availability</h1>
