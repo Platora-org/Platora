@@ -20,7 +20,8 @@ const DeliveryAgentDashboard = lazy(() => import("../pages/DeliveryAgentDashboar
 const CustomerReservation = lazy(() => import("../components/customerProfileComponents/CustomerReservation"))
 const kycrequests = lazy(() => import("../components/adminProfileComponents/AdminKycApproval"));
 const RestaurantsDisplay = lazy(() => import("../pages/RestaurantsDisplay"));
-const ReservationList = lazy(() => import("../components/customerProfileComponents/ReservationList"))
+const ReservationList = lazy(() => import("../components/customerProfileComponents/ReservationList"));
+const TableAvailability = lazy(() => import("../components/customerProfileComponents/TableAvailability"));
 
 export const appRoutes = [
   {
@@ -143,6 +144,13 @@ export const appRoutes = [
     component: CustomerReservation,
     requiresAuth: true,
     allowedRoles: ["customer"],      
+  },
+
+    {
+    path: "/tables",
+    component: TableAvailability,
+    requiresAuth: true,
+    allowedRoles: ["customer"],
   },
 
 ]
