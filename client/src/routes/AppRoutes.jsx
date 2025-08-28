@@ -18,6 +18,10 @@ const RestaurantWallet = lazy(() => import("../components/restaurantProfileCompo
 const DeliveryAgentManagement = lazy(() => import("../components/adminProfileComponents/DeliverAgent"))
 const DeliveryAgentDashboard = lazy(() => import("../pages/DeliveryAgentDashboard"));
 const CustomerReservation = lazy(() => import("../components/customerProfileComponents/CustomerReservation"))
+const kycrequests = lazy(() => import("../components/adminProfileComponents/AdminKycApproval"));
+const RestaurantsDisplay = lazy(() => import("../pages/RestaurantsDisplay"));
+const ReservationList = lazy(() => import("../components/customerProfileComponents/ReservationList"));
+const TableAvailability = lazy(() => import("../components/customerProfileComponents/TableAvailability"));
 const Menu = lazy(() => import("../pages/MenuNew"));
 
 export const appRoutes = [
@@ -26,6 +30,12 @@ export const appRoutes = [
     component: LoginPage,
     requiresAuth: false,
     hideHeader: true
+  },
+  {
+    path: "/restaurants",
+    component: RestaurantsDisplay,
+    requiresAuth: true,
+    allowedRoles: ["customer", "guest"],
   },
   {
     path: "/deliveryagent",
@@ -40,18 +50,21 @@ export const appRoutes = [
     requiresAuth: false,
     hideHeader: true
   },
+  
   {
     path: "*",
     component: NotFound,
     requiresAuth: false,
     hideHeader: true,
   },
+
   {
     path: "/",
     component: Home,
     requiresAuth: true,
     allowedRoles: ["customer", "guest"],
   },
+
   {
     path: "/customerprofile/*",
     component: CustomerProfile,
@@ -74,18 +87,21 @@ export const appRoutes = [
         path: "details",
         component: CustomerPersonalDetails,
       },
-      {
-        path: "reservation",
-        component: CustomerReservation,
+       {
+        path: "reservations",
+        component: ReservationList,
       },
+     
     ]
   },
+
   {
     path: "/redirect",
     component: RedirectPage,
     requiresAuth: false,
     hideHeader: true
   },
+
   {
     path: "/restaurant/*",
     component: RestaurantProfile,
@@ -106,6 +122,7 @@ export const appRoutes = [
       },
     ]
   },
+
    {
     path: "/admin/*",
     component: AdminProfile,
@@ -116,11 +133,30 @@ export const appRoutes = [
         path: "",
         component: AdminDashboard,
       },
-       {
+      {
         path: "deliveryagentmanage",
         component: DeliveryAgentManagement,
       },
+      {
+        path: "kycrequests",
+        component: kycrequests,
+      },
     ]
   },
+
+   {
+    path: "/reservations",           
+    component: CustomerReservation,
+    requiresAuth: true,
+    allowedRoles: ["customer"],      
+  },
+
+    {
+    path: "/tables",
+    component: TableAvailability,
+    requiresAuth: true,
+    allowedRoles: ["customer"],
+  },
+
 ]
 

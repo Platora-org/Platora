@@ -48,7 +48,27 @@ CREATE TABLE kyc_requests (
     bank_name VARCHAR(100) NOT NULL,
     branch VARCHAR(100) NOT NULL,
     tin_number VARCHAR(50) NOT NULL,
-    status VARCHAR(20) DEFAULT 'PENDING', -- PENDING, APPROVED, REJECTED
+    status VARCHAR(20) DEFAULT 'PENDING' CHECK (status IN ('PENDING','APPROVED','REJECTED')),
+    rejection_reason TEXT,
+    reviewed_by INT REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(restaurant_id)
+);
+
+CREATE INDEX idx_kyc_status ON kyc_requests(status);
+CREATE INDEX idx_kyc_restaurant ON kyc_requests(restaurant_id);
+
+-- Wallet Table
+CREATE TABLE wallets (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,   -- links to customer/res/admin
+    user_type VARCHAR(20) NOT NULL CHECK (user_type IN ('CUSTOMER','RESTAURANT','ADMIN')),
+
+    currency VARCHAR(10) DEFAULT 'LKR',                   -- preferred currency
+    balance_coins NUMERIC DEFAULT 0,                      -- coins (main internal currency)
+    balance_money NUMERIC DEFAULT 0,                      -- optional: real money for refunds
+
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
