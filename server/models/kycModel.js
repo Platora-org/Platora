@@ -110,3 +110,96 @@ export const rejectKYC = async (kycId, adminId, reason) => {
   );
   return result.rows[0];
 };
+
+// Get all KYC requests with filters
+export const getAllKYCRequests = async (status = null) => {
+  let query = `
+    SELECT 
+      k.*,
+      u.first_name,
+      u.last_name,
+      u.email,
+      u.phone,
+      reviewer.first_name as reviewer_first_name,
+      reviewer.last_name as reviewer_last_name
+    FROM kyc_requests k
+    JOIN users u ON k.restaurant_id = u.id
+    LEFT JOIN users reviewer ON k.reviewed_by = reviewer.id
+  `;
+  
+  const params = [];
+  
+  if (status) {
+    query += ' WHERE k.status = $1';
+    params.push(status);
+  }
+  
+  query += ' ORDER BY k.created_at DESC';
+  
+  const result = await pool.query(query, params);
+  return result.rows;
+};
+
+// Get KYC statistics for dashboard
+export const getKYCStatistics = async () => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        COALESCE(SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END), 0)::INTEGER as pending_count,
+        COALESCE(SUM(CASE WHEN status = 'APPROVED' THEN 1 ELSE 0 END), 0)::INTEGER as approved_count,
+        COALESCE(SUM(CASE WHEN status = 'REJECTED' THEN 1 ELSE 0 END), 0)::INTEGER as rejected_count,
+        COALESCE(COUNT(*), 0)::INTEGER as total_count
+      FROM kyc_requests
+    `);
+    
+    return result.rows[0] || {
+      pending_count: 0,
+      approved_count: 0,
+      rejected_count: 0,
+      total_count: 0
+    };
+  } catch (error) {
+    console.error("Database error in getKYCStatistics:", error);
+    throw error;
+  }
+};
+
+// Get document path for viewing
+export const getDocumentPath = async (kycId, docType) => {
+  const result = await pool.query(
+    `SELECT ${docType} FROM kyc_requests WHERE id = $1`,
+    [kycId]
+  );
+  return result.rows[0]?.[docType];
+};
+
+// models/kycModel.js (add these functions)
+
+// Get all KYC requests with filters (fixed function name conflict)
+export const getAllKYCRequestsWithFilter = async (status = null) => {
+  let query = `
+    SELECT 
+      k.*,
+      u.first_name,
+      u.last_name,
+      u.email,
+      u.phone,
+      reviewer.first_name as reviewer_first_name,
+      reviewer.last_name as reviewer_last_name
+    FROM kyc_requests k
+    JOIN users u ON k.restaurant_id = u.id
+    LEFT JOIN users reviewer ON k.reviewed_by = reviewer.id
+  `;
+  
+  const params = [];
+  
+  if (status) {
+    query += ' WHERE k.status = $1';
+    params.push(status);
+  }
+  
+  query += ' ORDER BY k.created_at DESC';
+  
+  const result = await pool.query(query, params);
+  return result.rows;
+};

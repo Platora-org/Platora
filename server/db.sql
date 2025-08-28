@@ -72,3 +72,20 @@ CREATE TABLE wallets (
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Create audit log table
+CREATE TABLE kyc_audit_logs (
+    id SERIAL PRIMARY KEY,
+    kyc_id INT REFERENCES kyc_requests(id),
+    admin_id INT REFERENCES users(id),
+    action VARCHAR(50) NOT NULL, -- 'APPROVED', 'REJECTED', 'VIEWED'
+    details TEXT,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_kyc_audit_kyc ON kyc_audit_logs(kyc_id);
+CREATE INDEX idx_kyc_audit_admin ON kyc_audit_logs(admin_id);
+CREATE INDEX idx_kyc_audit_action ON kyc_audit_logs(action);
+CREATE INDEX idx_kyc_audit_created ON kyc_audit_logs(created_at);

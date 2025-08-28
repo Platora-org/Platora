@@ -9,6 +9,7 @@ import authRoutes from './routes/authRoutes.js';
 import customerProfileRoutes from './routes/customerProfileRoutes.js';
 import adminProfileRoutes from './routes/adminProfileRoutes.js'
 import kycRoutes from './routes/kycRoutes.js';
+import auditRoutes from './routes/auditRoutes.js';
 
 
 const app = express();
@@ -38,6 +39,8 @@ app.use('/customer/profile', customerProfileRoutes);
 app.use('/admin/profile', adminProfileRoutes);
 
 app.use('/api/restaurant/kyc', kycRoutes);
+
+app.use('/api/audit', auditRoutes);
 
 
 app.listen(port, () => {

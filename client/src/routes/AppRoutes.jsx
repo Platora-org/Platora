@@ -23,6 +23,8 @@ const RestaurantsDisplay = lazy(() => import("../pages/RestaurantsDisplay"));
 const ReservationList = lazy(() => import("../components/customerProfileComponents/ReservationList"));
 const TableAvailability = lazy(() => import("../components/customerProfileComponents/TableAvailability"));
 const Menu = lazy(() => import("../pages/MenuNew"));
+const AuditLogs = lazy(() => import("../components/adminProfileComponents/AdminAuditLogs"));
+
 
 export const appRoutes = [
   {
@@ -141,6 +143,10 @@ export const appRoutes = [
         path: "kycrequests",
         component: kycrequests,
       },
+      {
+        path: "auditlogs",
+        component: AuditLogs,
+      }
     ]
   },
 
