@@ -71,3 +71,24 @@ CREATE TABLE wallets (
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
+
+-- menu_categories Table
+create table menu_categories (
+  id serial primary key,
+  restaurant_id integer not null references restaurant_profiles(id) on delete cascade,
+  name text not null,
+  created_at timestamptz default now()
+);
+
+-- menu_items Table
+create table menu_items (
+  id serial primary key,
+  restaurant_id integer not null references restaurant_profiles(id) on delete cascade,
+  category_id integer references menu_categories(id) on delete set null,
+  name text not null,
+  description text,
+  price numeric(10,2) not null,
+  image_url text,
+  is_active boolean default true,
+  created_at timestamptz default now()
+);

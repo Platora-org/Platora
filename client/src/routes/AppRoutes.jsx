@@ -20,6 +20,7 @@ const DeliveryAgentDashboard = lazy(() => import("../pages/DeliveryAgentDashboar
 const CustomerReservation = lazy(() => import("../components/customerProfileComponents/CustomerReservation"))
 const kycrequests = lazy(() => import("../components/adminProfileComponents/AdminKycApproval"));
 const RestaurantsDisplay = lazy(() => import("../pages/RestaurantsDisplay"));
+const RestaurantMenuList = lazy(() => import("../pages/RestaurantMenuList"));
 
 export const appRoutes = [
   {
@@ -31,6 +32,12 @@ export const appRoutes = [
   {
     path: "/restaurants",
     component: RestaurantsDisplay,
+    requiresAuth: true,
+    allowedRoles: ["customer", "guest"],
+  },
+  {
+    path: "/restaurants/:id/menu",
+    component: RestaurantMenuList,
     requiresAuth: true,
     allowedRoles: ["customer", "guest"],
   },
