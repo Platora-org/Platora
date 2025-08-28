@@ -18,6 +18,7 @@ const RestaurantWallet = lazy(() => import("../components/restaurantProfileCompo
 const DeliveryAgentManagement = lazy(() => import("../components/adminProfileComponents/DeliverAgent"))
 const DeliveryAgentDashboard = lazy(() => import("../pages/DeliveryAgentDashboard"));
 const CustomerReservation = lazy(() => import("../components/customerProfileComponents/CustomerReservation"))
+const Menu = lazy(() => import("../pages/MenuNew"));
 
 export const appRoutes = [
   {
@@ -98,6 +99,10 @@ export const appRoutes = [
       {
         path: "wallet",
         component: RestaurantWallet, 
+      },
+      {
+        path: "menu",
+        component: Menu, 
       },
     ]
   },
