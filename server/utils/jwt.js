@@ -7,7 +7,7 @@ export const generateToken = (user) => {
   const lastName = user.restaurantProfile?.lastName || user.last_name || '';
   const email = user.restaurantProfile?.email || user.email || '';
   const role = user.role || (user.restaurantProfile?.role || '');
-  const restaurantName = user.restaurantProfile?.restaurantName || '';
+  const restaurantName = user.restaurantProfile?.restaurantName || user.restaurantProfile?.restaurant_name || '';
 
   // Add restaurantName only if role === 'restaurant' and it exists
   const payload = {

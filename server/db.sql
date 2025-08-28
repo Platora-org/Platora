@@ -89,3 +89,24 @@ CREATE INDEX idx_kyc_audit_kyc ON kyc_audit_logs(kyc_id);
 CREATE INDEX idx_kyc_audit_admin ON kyc_audit_logs(admin_id);
 CREATE INDEX idx_kyc_audit_action ON kyc_audit_logs(action);
 CREATE INDEX idx_kyc_audit_created ON kyc_audit_logs(created_at);
+
+-- menu_categories Table
+create table menu_categories (
+  id serial primary key,
+  restaurant_id integer not null references restaurant_profiles(id) on delete cascade,
+  name text not null,
+  created_at timestamptz default now()
+);
+
+-- menu_items Table
+create table menu_items (
+  id serial primary key,
+  restaurant_id integer not null references restaurant_profiles(id) on delete cascade,
+  category_id integer references menu_categories(id) on delete set null,
+  name text not null,
+  description text,
+  price numeric(10,2) not null,
+  image_url text,
+  is_active boolean default true,
+  created_at timestamptz default now()
+);
