@@ -5,10 +5,23 @@ import {
   getPendingKYCRequests,
   getKYCById,
   approveKYC,
-  rejectKYC
+  rejectKYC,
+  getAllKYCRequestsWithFilter, // Use the correct import name
+  getKYCStatistics as getKYCStatisticsFromDB // Rename to avoid conflict
 } from "../models/kycModel.js";
 import { createWallet, getWalletByUserId } from "../models/walletModel.js";
 import { validateKYCData } from "../utils/validators.js";
+import { createAuditLog } from "../models/auditModel.js";
+import path from 'path';
+import fs from 'fs';
+
+// Helper function to get IP address
+const getClientIp = (req) => {
+  return req.ip || 
+         req.headers['x-forwarded-for'] || 
+         req.connection.remoteAddress || 
+         'Unknown';
+};
 
 // Get KYC status and user info
 export const getKYCStatus = async (req, res) => {
@@ -142,6 +155,8 @@ export const approveKYCRequest = async (req, res) => {
   try {
     const adminId = req.user.id;
     const { kycId } = req.params;
+    const ipAddress = getClientIp(req);
+    const userAgent = req.get('user-agent') || 'Unknown';
 
     // Validate KYC exists
     const kycRequest = await getKYCById(kycId);
@@ -158,16 +173,24 @@ export const approveKYCRequest = async (req, res) => {
     // Approve KYC
     const approvedKYC = await approveKYC(kycId, adminId);
 
-    // Check if wallet already exists
+    // Create wallet if doesn't exist
     const existingWallet = await getWalletByUserId(approvedKYC.restaurant_id);
-    
     if (!existingWallet) {
-      // Create wallet for restaurant
       await createWallet({ 
         userId: approvedKYC.restaurant_id,
         userType: 'RESTAURANT'
       });
     }
+
+    // Create audit log
+    await createAuditLog({
+      kycId: parseInt(kycId),
+      adminId,
+      action: 'APPROVED',
+      details: `KYC approved and wallet ${existingWallet ? 'already existed' : 'created'}`,
+      ipAddress,
+      userAgent
+    });
 
     res.json({ 
       message: "KYC approved and wallet created successfully",
@@ -179,12 +202,14 @@ export const approveKYCRequest = async (req, res) => {
   }
 };
 
-// Reject KYC request (admin)
+// Reject KYC request with audit
 export const rejectKYCRequest = async (req, res) => {
   try {
     const adminId = req.user.id;
     const { kycId } = req.params;
     const { reason } = req.body;
+    const ipAddress = getClientIp(req);
+    const userAgent = req.get('user-agent') || 'Unknown';
 
     if (!reason || reason.trim().length < 10) {
       return res.status(400).json({ 
@@ -204,7 +229,18 @@ export const rejectKYCRequest = async (req, res) => {
       });
     }
 
+    // Reject KYC
     const rejectedKYC = await rejectKYC(kycId, adminId, reason);
+
+    // Create audit log
+    await createAuditLog({
+      kycId: parseInt(kycId),
+      adminId,
+      action: 'REJECTED',
+      details: `Rejection reason: ${reason}`,
+      ipAddress,
+      userAgent
+    });
 
     res.json({ 
       message: "KYC rejected successfully",
@@ -213,5 +249,94 @@ export const rejectKYCRequest = async (req, res) => {
   } catch (err) {
     console.error("Reject KYC Error:", err);
     res.status(500).json({ error: "Failed to reject KYC" });
+  }
+};
+
+// Get all KYC requests with optional status filter
+export const getAllKYCRequests = async (req, res) => {
+  try {
+    const { status } = req.query;
+    console.log("Fetching KYC requests with status:", status);
+    
+    // Call the MODEL function, not the controller function
+    const kycRequests = await getAllKYCRequestsWithFilter(status); // ✅ CORRECT
+    
+    console.log(`Found ${kycRequests.length} KYC requests`);
+    
+    res.json({
+      count: kycRequests.length,
+      requests: kycRequests
+    });
+  } catch (err) {
+    console.error("Get All KYC Requests Error:", err);
+    res.status(500).json({ error: "Failed to fetch KYC requests" });
+  }
+};
+
+// Get KYC statistics
+export const getKYCStats = async (req, res) => {
+  try {
+    console.log("Fetching KYC statistics...");
+    
+    // Call the MODEL function, not the controller function
+    const stats = await getKYCStatisticsFromDB(); // ✅ CORRECT
+    
+    console.log("Statistics fetched:", stats);
+    res.json(stats);
+  } catch (err) {
+    console.error("Get KYC Statistics Error:", err);
+    res.status(500).json({ error: "Failed to fetch KYC statistics" });
+  }
+};
+
+// View document with audit
+export const viewDocument = async (req, res) => {
+  try {
+    const adminId = req.user.id;
+    const { path: docPath, kycId } = req.query;
+    const ipAddress = getClientIp(req);
+    const userAgent = req.get('user-agent') || 'Unknown';
+    
+    if (!docPath) {
+      return res.status(400).json({ error: "Document path required" });
+    }
+
+    if (kycId && !isNaN(parseInt(kycId))) {
+      await createAuditLog({
+        kycId: parseInt(kycId),
+        adminId,
+        action: 'VIEWED',
+        details: `Viewed document: ${path.basename(docPath)}`,
+        ipAddress: getClientIp(req),
+        userAgent: req.get('user-agent') || 'Unknown'
+      });
+    }
+    
+    // Security check
+    const safePath = path.normalize(docPath);
+    if (safePath.includes('..')) {
+      return res.status(403).json({ error: "Invalid path" });
+    }
+    
+    if (!fs.existsSync(safePath)) {
+      return res.status(404).json({ error: "Document not found" });
+    }
+    
+    // Create audit log for document view
+    if (kycId) {
+      await createAuditLog({
+        kycId: parseInt(kycId),
+        adminId,
+        action: 'VIEWED',
+        details: `Viewed document: ${path.basename(safePath)}`,
+        ipAddress,
+        userAgent
+      });
+    }
+    
+    res.sendFile(path.resolve(safePath));
+  } catch (err) {
+    console.error("View Document Error:", err);
+    res.status(500).json({ error: "Failed to retrieve document" });
   }
 };

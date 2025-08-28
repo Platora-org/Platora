@@ -9,7 +9,9 @@ import authRoutes from './routes/authRoutes.js';
 import customerProfileRoutes from './routes/customerProfileRoutes.js';
 import adminProfileRoutes from './routes/adminProfileRoutes.js'
 import kycRoutes from './routes/kycRoutes.js';
-
+import auditRoutes from './routes/auditRoutes.js';
+import restaurantsListRoutes from './routes/restaurantsListRoutes.js'
+import menuListRoutes from './routes/menuListRoutes.js'
 
 const app = express();
 const port = 3000;
@@ -36,8 +38,12 @@ configurePassport(passport);
 app.use('/api/auth', authRoutes);
 app.use('/customer/profile', customerProfileRoutes);
 app.use('/admin/profile', adminProfileRoutes);
+app.use('/restaurants/data', restaurantsListRoutes);
+app.use('/restaurants/menu', menuListRoutes);
 
 app.use('/api/restaurant/kyc', kycRoutes);
+
+app.use('/api/audit', auditRoutes);
 
 
 app.listen(port, () => {
