@@ -173,8 +173,6 @@ export const getDocumentPath = async (kycId, docType) => {
   return result.rows[0]?.[docType];
 };
 
-// models/kycModel.js (add these functions)
-
 // Get all KYC requests with filters (fixed function name conflict)
 export const getAllKYCRequestsWithFilter = async (status = null) => {
   let query = `
