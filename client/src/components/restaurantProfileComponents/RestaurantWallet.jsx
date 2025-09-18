@@ -1,7 +1,231 @@
 import React, { useState, useMemo, useEffect } from "react";
 import axios from "axios";
-import { CheckCircle, X } from "lucide-react";
+import { CheckCircle, X, ChevronDown } from "lucide-react";
 import { useAuth } from "../../utils/AuthContext"; 
+
+// Sri Lankan Banks and their branches
+const SRI_LANKAN_BANKS = {
+  "Bank of Ceylon": [
+    "Colombo Main Branch",
+    "Kandy Branch",
+    "Galle Branch",
+    "Negombo Branch",
+    "Matara Branch",
+    "Kurunegala Branch",
+    "Anuradhapura Branch",
+    "Batticaloa Branch",
+    "Jaffna Branch",
+    "Trincomalee Branch",
+    "Ratnapura Branch",
+    "Badulla Branch",
+    "Ampara Branch",
+    "Kalutara Branch",
+    "Panadura Branch",
+    "Moratuwa Branch",
+    "Dehiwala Branch",
+    "Maharagama Branch",
+    "Kotte Branch",
+    "Nugegoda Branch"
+  ],
+  "People's Bank": [
+    "Colombo Main Branch",
+    "Kandy Branch",
+    "Galle Branch",
+    "Matara Branch",
+    "Kurunegala Branch",
+    "Anuradhapura Branch",
+    "Negombo Branch",
+    "Jaffna Branch",
+    "Batticaloa Branch",
+    "Trincomalee Branch",
+    "Ratnapura Branch",
+    "Badulla Branch",
+    "Hambantota Branch",
+    "Vavuniya Branch",
+    "Mannar Branch",
+    "Kalutara Branch",
+    "Panadura Branch",
+    "Moratuwa Branch",
+    "Dehiwala Branch",
+    "Kotte Branch"
+  ],
+  "Commercial Bank": [
+    "Colombo Main Branch",
+    "Kandy Branch",
+    "Galle Branch",
+    "Negombo Branch",
+    "Matara Branch",
+    "Kurunegala Branch",
+    "Anuradhapura Branch",
+    "Jaffna Branch",
+    "Batticaloa Branch",
+    "Trincomalee Branch",
+    "Ratnapura Branch",
+    "Badulla Branch",
+    "Kalutara Branch",
+    "Panadura Branch",
+    "Moratuwa Branch",
+    "Dehiwala Branch",
+    "Maharagama Branch",
+    "Kotte Branch",
+    "Nugegoda Branch",
+    "Ja-Ela Branch"
+  ],
+  "Hatton National Bank": [
+    "Colombo Main Branch",
+    "Kandy Branch",
+    "Galle Branch",
+    "Negombo Branch",
+    "Matara Branch",
+    "Kurunegala Branch",
+    "Anuradhapura Branch",
+    "Jaffna Branch",
+    "Batticaloa Branch",
+    "Trincomalee Branch",
+    "Ratnapura Branch",
+    "Badulla Branch",
+    "Hambantota Branch",
+    "Kalutara Branch",
+    "Panadura Branch",
+    "Moratuwa Branch",
+    "Dehiwala Branch",
+    "Maharagama Branch",
+    "Kotte Branch",
+    "Nugegoda Branch"
+  ],
+  "Sampath Bank": [
+    "Colombo Main Branch",
+    "Kandy Branch",
+    "Galle Branch",
+    "Negombo Branch",
+    "Matara Branch",
+    "Kurunegala Branch",
+    "Anuradhapura Branch",
+    "Jaffna Branch",
+    "Batticaloa Branch",
+    "Trincomalee Branch",
+    "Ratnapura Branch",
+    "Badulla Branch",
+    "Kalutara Branch",
+    "Panadura Branch",
+    "Moratuwa Branch",
+    "Dehiwala Branch",
+    "Maharagama Branch",
+    "Kotte Branch",
+    "Nugegoda Branch",
+    "Homagama Branch"
+  ],
+  "Seylan Bank": [
+    "Colombo Main Branch",
+    "Kandy Branch",
+    "Galle Branch",
+    "Negombo Branch",
+    "Matara Branch",
+    "Kurunegala Branch",
+    "Anuradhapura Branch",
+    "Jaffna Branch",
+    "Batticaloa Branch",
+    "Trincomalee Branch",
+    "Ratnapura Branch",
+    "Badulla Branch",
+    "Kalutara Branch",
+    "Panadura Branch",
+    "Moratuwa Branch",
+    "Dehiwala Branch",
+    "Maharagama Branch",
+    "Kotte Branch",
+    "Nugegoda Branch",
+    "Homagama Branch"
+  ],
+  "Nations Trust Bank": [
+    "Colombo Main Branch",
+    "Kandy Branch",
+    "Galle Branch",
+    "Negombo Branch",
+    "Matara Branch",
+    "Kurunegala Branch",
+    "Ratnapura Branch",
+    "Kalutara Branch",
+    "Panadura Branch",
+    "Moratuwa Branch",
+    "Dehiwala Branch",
+    "Maharagama Branch",
+    "Kotte Branch",
+    "Nugegoda Branch",
+    "Battaramulla Branch",
+    "Rajagiriya Branch",
+    "Wellawatte Branch",
+    "Bambalapitiya Branch",
+    "Kollupitiya Branch",
+    "Pettah Branch"
+  ],
+  "DFCC Bank": [
+    "Colombo Main Branch",
+    "Kandy Branch",
+    "Galle Branch",
+    "Negombo Branch",
+    "Matara Branch",
+    "Kurunegala Branch",
+    "Anuradhapura Branch",
+    "Ratnapura Branch",
+    "Kalutara Branch",
+    "Panadura Branch",
+    "Moratuwa Branch",
+    "Dehiwala Branch",
+    "Maharagama Branch",
+    "Kotte Branch",
+    "Nugegoda Branch",
+    "Battaramulla Branch",
+    "Rajagiriya Branch",
+    "Wellawatte Branch",
+    "Bambalapitiya Branch",
+    "Kollupitiya Branch"
+  ],
+  "Union Bank": [
+    "Colombo Main Branch",
+    "Kandy Branch",
+    "Galle Branch",
+    "Negombo Branch",
+    "Matara Branch",
+    "Kurunegala Branch",
+    "Kalutara Branch",
+    "Panadura Branch",
+    "Moratuwa Branch",
+    "Dehiwala Branch",
+    "Maharagama Branch",
+    "Kotte Branch",
+    "Nugegoda Branch",
+    "Battaramulla Branch",
+    "Rajagiriya Branch",
+    "Wellawatte Branch",
+    "Bambalapitiya Branch",
+    "Kollupitiya Branch",
+    "Mount Lavinia Branch",
+    "Ratmalana Branch"
+  ],
+  "Pan Asia Bank": [
+    "Colombo Main Branch",
+    "Kandy Branch",
+    "Galle Branch",
+    "Negombo Branch",
+    "Matara Branch",
+    "Kurunegala Branch",
+    "Ratnapura Branch",
+    "Kalutara Branch",
+    "Panadura Branch",
+    "Moratuwa Branch",
+    "Dehiwala Branch",
+    "Maharagama Branch",
+    "Kotte Branch",
+    "Nugegoda Branch",
+    "Battaramulla Branch",
+    "Rajagiriya Branch",
+    "Wellawatte Branch",
+    "Bambalapitiya Branch",
+    "Kollupitiya Branch",
+    "Kiribathgoda Branch"
+  ]
+};
 
 const KYC_STATUS = {
   NOT_SUBMITTED: "NOT_SUBMITTED", 
@@ -70,6 +294,44 @@ const Toast = ({ message, type, isVisible, onClose }) => {
   );
 };
 
+// Custom Dropdown Component
+const CustomDropdown = ({ value, onChange, options, placeholder, error, disabled = false }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <div
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        className={`w-full px-4 py-3 border rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors cursor-pointer flex items-center justify-between ${
+          error ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
+        } ${disabled ? 'bg-gray-100 dark:bg-gray-700 cursor-not-allowed' : ''}`}
+      >
+        <span className={value ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}>
+          {value || placeholder}
+        </span>
+        <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </div>
+      
+      {isOpen && !disabled && (
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl shadow-lg max-h-60 overflow-auto">
+          {options.map((option, index) => (
+            <div
+              key={index}
+              onClick={() => {
+                onChange(option);
+                setIsOpen(false);
+              }}
+              className="px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer text-gray-900 dark:text-white transition-colors"
+            >
+              {option}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const RestaurantWallet = () => {
   const { user: loggedUser, setUser, loading } = useAuth();
   const [nic, setNIC] = useState(null);
@@ -80,6 +342,8 @@ const RestaurantWallet = () => {
   const [branchName, setBranchName] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [restaurantName, setRestaurantName] = useState("");
+  const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [kycData, setKycData] = useState(null);
@@ -89,11 +353,85 @@ const RestaurantWallet = () => {
   const [toast, setToast] = useState({
     isVisible: false,
     message: "",
-    type: "success" // 'success' or 'error'
+    type: "success"
   });
 
   const allowedTypes = ["image/jpeg", "image/png", "application/pdf"];
   const maxSize = 5 * 1024 * 1024;
+
+  // Enhanced regex patterns
+  const patterns = {
+    tin: /^[0-9]{9}$/,
+    bankAccount: /^[0-9]{6,20}$/,
+    bank: /^[A-Za-z\s&.-]{2,50}$/,
+    branch: /^[A-Za-z0-9\s&.,-]{2,50}$/,
+    name: /^[A-Za-z\s]{2,30}$/,
+  };
+
+  // Real-time input validation with character restriction
+  const handleInputChange = (field, value) => {
+    let filteredValue = value;
+    let newErrors = { ...errors };
+
+    switch (field) {
+      case 'tin':
+        // Only allow numbers, max 9 digits
+        filteredValue = value.replace(/[^0-9]/g, '').slice(0, 9);
+        
+        if (value !== filteredValue) {
+          newErrors.tin = "TIN must contain only digits.";
+        } else if (filteredValue && filteredValue.length < 9) {
+          newErrors.tin = "TIN must be exactly 9 digits.";
+        } else {
+          delete newErrors.tin;
+        }
+        
+        setTIN(filteredValue);
+        break;
+
+      case 'bankAccount':
+        // Only allow numbers, max 20 digits
+        filteredValue = value.replace(/[^0-9]/g, '').slice(0, 20);
+        
+        if (value !== filteredValue) {
+          newErrors.bankAccount = "Bank account must contain only digits.";
+        } else if (filteredValue && filteredValue.length < 6) {
+          newErrors.bankAccount = "Bank account must be at least 6 digits.";
+        } else {
+          delete newErrors.bankAccount;
+        }
+        
+        setBankAccount(filteredValue);
+        break;
+
+      default:
+        break;
+    }
+
+    setErrors(newErrors);
+  };
+
+  // Handle bank selection
+  const handleBankChange = (selectedBank) => {
+    setBankName(selectedBank);
+    setBranchName(""); // Reset branch when bank changes
+    
+    // Clear bank name errors
+    const newErrors = { ...errors };
+    delete newErrors.bankName;
+    delete newErrors.branchName;
+    setErrors(newErrors);
+  };
+
+  // Handle branch selection
+  const handleBranchChange = (selectedBranch) => {
+    setBranchName(selectedBranch);
+    
+    // Clear branch errors
+    const newErrors = { ...errors };
+    delete newErrors.branchName;
+    setErrors(newErrors);
+  };
 
   // Show toast function
   const showToast = (message, type = 'success') => {
@@ -119,13 +457,13 @@ const RestaurantWallet = () => {
           withCredentials: true,
         });
         
-        // Set user info (first_name, last_name)
         if (response.data.user) {
           setFirstName(response.data.user.first_name);
           setLastName(response.data.user.last_name);
+          setRestaurantName("response.data.user.restaurant_name (Dummy Check)"); // Assuming restaurant_name is part of user data
+          setEmail(response.data.user.email || "");
         }
         
-        // Set KYC data if exists
         if (response.data.kycData) {
           setKycData(response.data.kycData);
           if (response.data.kycData.status === 'REJECTED') {
@@ -163,94 +501,6 @@ const RestaurantWallet = () => {
 
   const sanitizeInput = (input) => input.replace(/[^\w\s-]/gi, "");
 
-  // Enhanced regex patterns
-  const patterns = {
-    tin: /^[0-9]{9,12}$/, // TIN numbers are typically 9-12 digits
-    bankAccount: /^[0-9]{6,20}$/, // Bank account numbers
-    bank: /^[A-Za-z\s&.-]{2,50}$/, // Bank names can have &, ., -
-    branch: /^[A-Za-z0-9\s&.,-]{2,50}$/, // Branch names
-    name: /^[A-Za-z\s]{2,30}$/, // Names
-  };
-
-  // Real-time validation handlers
-  const handleTINChange = (e) => {
-    const value = e.target.value;
-    setTIN(value);
-
-    let newErrors = { ...errors };
-    if (value && !patterns.tin.test(value)) {
-      newErrors.tin = "TIN must be 9-12 digits only.";
-    } else {
-      delete newErrors.tin;
-    }
-    setErrors(newErrors);
-  };
-
-  const handleBankAccountChange = (e) => {
-    const value = e.target.value;
-    setBankAccount(value);
-
-    let newErrors = { ...errors };
-    if (value && !patterns.bankAccount.test(value)) {
-      newErrors.bankAccount = "Bank account must be 6–20 digits.";
-    } else {
-      delete newErrors.bankAccount;
-    }
-    setErrors(newErrors);
-  };
-
-  const handleBankNameChange = (e) => {
-    const value = e.target.value;
-    setBankName(value);
-
-    let newErrors = { ...errors };
-    if (value && !patterns.bank.test(value)) {
-      newErrors.bankName = "Bank name must contain only letters and common symbols.";
-    } else {
-      delete newErrors.bankName;
-    }
-    setErrors(newErrors);
-  };
-
-  const handleBranchNameChange = (e) => {
-    const value = e.target.value;
-    setBranchName(value);
-
-    let newErrors = { ...errors };
-    if (value && !patterns.branch.test(value)) {
-      newErrors.branchName = "Branch name must contain only letters, numbers and common symbols.";
-    } else {
-      delete newErrors.branchName;
-    }
-    setErrors(newErrors);
-  };
-
-  const handleFirstNameChange = (e) => {
-    const value = e.target.value;
-    setFirstName(value);
-
-    let newErrors = { ...errors };
-    if (value && !patterns.name.test(value)) {
-      newErrors.firstName = "First name must contain only letters.";
-    } else {
-      delete newErrors.firstName;
-    }
-    setErrors(newErrors);
-  };
-
-  const handleLastNameChange = (e) => {
-    const value = e.target.value;
-    setLastName(value);
-
-    let newErrors = { ...errors };
-    if (value && !patterns.name.test(value)) {
-      newErrors.lastName = "Last name must contain only letters.";
-    } else {
-      delete newErrors.lastName;
-    }
-    setErrors(newErrors);
-  };
-
   const validateForm = () => {
     let newErrors = {};
 
@@ -262,16 +512,13 @@ const RestaurantWallet = () => {
     else if (!patterns.name.test(lastName)) newErrors.lastName = "Last name must contain only letters.";
 
     if (!tin) newErrors.tin = "TIN number is required.";
-    else if (!patterns.tin.test(tin)) newErrors.tin = "TIN must be 9-12 digits only.";
+    else if (!patterns.tin.test(tin)) newErrors.tin = "TIN must be exactly 9 digits.";
 
     if (!bankAccount) newErrors.bankAccount = "Bank account number is required.";
     else if (!patterns.bankAccount.test(bankAccount)) newErrors.bankAccount = "Bank account must be 6–20 digits.";
 
     if (!bankName) newErrors.bankName = "Bank name is required.";
-    else if (!patterns.bank.test(bankName)) newErrors.bankName = "Bank name must contain only letters and common symbols.";
-
     if (!branchName) newErrors.branchName = "Branch name is required.";
-    else if (!patterns.branch.test(branchName)) newErrors.branchName = "Branch name must contain only letters, numbers and common symbols.";
 
     if (!nic) newErrors.nic = "NIC document is required.";
     if (!businessReg) newErrors.businessReg = "Business registration document is required.";
@@ -284,6 +531,8 @@ const RestaurantWallet = () => {
     return (
       firstName &&
       lastName &&
+      restaurantName &&
+      email &&
       tin &&
       bankAccount &&
       bankName &&
@@ -292,7 +541,7 @@ const RestaurantWallet = () => {
       businessReg &&
       Object.keys(errors).length === 0
     );
-  }, [firstName, lastName, tin, bankAccount, bankName, branchName, nic, businessReg, errors]);
+  }, [firstName, lastName, restaurantName, email, tin, bankAccount, bankName, branchName, nic, businessReg, errors]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -316,20 +565,20 @@ const RestaurantWallet = () => {
       formData.append("branch", sanitizeInput(branchName));
       formData.append("first_name", sanitizeInput(firstName));
       formData.append("last_name", sanitizeInput(lastName));
+      formData.append("restaurant_name", sanitizeInput(restaurantName));
+      formData.append("email", sanitizeInput(email));
 
       const res = await axios.post("/api/restaurant/kyc/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
         withCredentials: true,
       });
 
-      // THIS IS THE KEY FIX: Update local state to reflect submission immediately
       setKycData({
         ...res.data.kycRecord,
-        status: KYC_STATUS.PENDING, // Ensure status is set to PENDING
-        created_at: new Date().toISOString() // Set current timestamp
+        status: KYC_STATUS.PENDING,
+        created_at: new Date().toISOString()
       });
       
-      // Show success toast instead of alert
       showToast("KYC submitted successfully! Please wait for verification.");
       
       // Clear form data
@@ -436,7 +685,7 @@ const RestaurantWallet = () => {
                     <svg className="w-5 h-5 mr-2 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
-                    Personal Information
+                    Restaurant Owner's Information
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* First Name */}
@@ -467,6 +716,36 @@ const RestaurantWallet = () => {
                         disabled
                       />
                       {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>}
+                    </div>
+
+                    {/* Restaurant name */}
+                    <div>
+                      <label className="block font-medium text-gray-800 dark:text-gray-200 mb-2">
+                        Restaurant Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={restaurantName}
+                        readOnly
+                        className="w-full px-4 py-3 border rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 cursor-not-allowed"
+                        disabled
+                      />
+                      {errors.restaurantName && <p className="text-red-500 text-sm mt-1">{errors.restaurantName}</p>}
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                      <label className="block font-medium text-gray-800 dark:text-gray-200 mb-2">
+                        Email <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={email}
+                        readOnly
+                        className="w-full px-4 py-3 border rounded-xl bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 cursor-not-allowed"
+                        disabled
+                      />
+                      {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
                     </div>
                   </div>
                 </div>
@@ -539,13 +818,17 @@ const RestaurantWallet = () => {
                       <input
                         type="text"
                         value={tin}
-                        onChange={handleTINChange}
+                        onChange={(e) => handleInputChange('tin', e.target.value)}
                         className={`w-full px-4 py-3 border rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors ${
                           errors.tin ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
                         }`}
-                        placeholder="Enter 9-12 digit TIN"
+                        placeholder="Enter 9-digit TIN"
+                        maxLength={9}
                         required
                       />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Only numbers allowed, exactly 9 digits
+                      </p>
                       {errors.tin && <p className="text-red-500 text-sm mt-1">{errors.tin}</p>}
                     </div>
 
@@ -557,48 +840,47 @@ const RestaurantWallet = () => {
                       <input
                         type="text"
                         value={bankAccount}
-                        onChange={handleBankAccountChange}
+                        onChange={(e) => handleInputChange('bankAccount', e.target.value)}
                         className={`w-full px-4 py-3 border rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors ${
                           errors.bankAccount ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
                         }`}
                         placeholder="Enter bank account number"
+                        maxLength={20}
                         required
                       />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Only numbers allowed, 6-20 digits
+                      </p>
                       {errors.bankAccount && <p className="text-red-500 text-sm mt-1">{errors.bankAccount}</p>}
                     </div>
 
-                    {/* Bank Name */}
+                    {/* Bank Name Dropdown */}
                     <div>
                       <label className="block font-medium text-gray-800 dark:text-gray-200 mb-2">
                         Bank Name <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="text"
+                      <CustomDropdown
                         value={bankName}
-                        onChange={handleBankNameChange}
-                        className={`w-full px-4 py-3 border rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors ${
-                          errors.bankName ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
-                        }`}
-                        placeholder="Enter bank name"
-                        required
+                        onChange={handleBankChange}
+                        options={Object.keys(SRI_LANKAN_BANKS)}
+                        placeholder="Select your bank"
+                        error={errors.bankName}
                       />
                       {errors.bankName && <p className="text-red-500 text-sm mt-1">{errors.bankName}</p>}
                     </div>
 
-                    {/* Branch Name */}
+                    {/* Branch Name Dropdown */}
                     <div>
                       <label className="block font-medium text-gray-800 dark:text-gray-200 mb-2">
                         Branch Name <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="text"
+                      <CustomDropdown
                         value={branchName}
-                        onChange={handleBranchNameChange}
-                        className={`w-full px-4 py-3 border rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors ${
-                          errors.branchName ? 'border-red-300 dark:border-red-600' : 'border-gray-300 dark:border-gray-600'
-                        }`}
-                        placeholder="Enter branch name"
-                        required
+                        onChange={handleBranchChange}
+                        options={bankName ? SRI_LANKAN_BANKS[bankName] || [] : []}
+                        placeholder={bankName ? "Select branch" : "Select bank first"}
+                        error={errors.branchName}
+                        disabled={!bankName}
                       />
                       {errors.branchName && <p className="text-red-500 text-sm mt-1">{errors.branchName}</p>}
                     </div>
@@ -690,7 +972,7 @@ const RestaurantWallet = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                     </svg>
                   </div>
-                  <div className="text-4xl font-bold mb-2">$1,250.00</div>
+                  <div className="text-4xl font-bold mb-2">LKR 235,750.00</div>
                   <p className="text-emerald-100 text-sm">Last updated: Today</p>
                 </div>
               </div>
@@ -739,7 +1021,7 @@ const RestaurantWallet = () => {
                     </button>
                   </div>
                   <div className="space-y-4">
-                    {/* Transaction Item */}
+                    {/* Transaction Items */}
                     <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/30 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors">
                       <div className="flex items-center space-x-4">
                         <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
@@ -752,7 +1034,7 @@ const RestaurantWallet = () => {
                           <p className="text-sm text-gray-500 dark:text-gray-400">Order #1234 • 2 hours ago</p>
                         </div>
                       </div>
-                      <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">+$75.50</span>
+                      <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">+LKR 14,250.00</span>
                     </div>
 
                     <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/30 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors">
@@ -767,7 +1049,7 @@ const RestaurantWallet = () => {
                           <p className="text-sm text-gray-500 dark:text-gray-400">Platform fee • Yesterday</p>
                         </div>
                       </div>
-                      <span className="text-lg font-bold text-red-600 dark:text-red-400">-$5.00</span>
+                      <span className="text-lg font-bold text-red-600 dark:text-red-400">-LKR 950.00</span>
                     </div>
 
                     <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/30 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors">
@@ -782,7 +1064,7 @@ const RestaurantWallet = () => {
                           <p className="text-sm text-gray-500 dark:text-gray-400">Order #1233 • 2 days ago</p>
                         </div>
                       </div>
-                      <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">+$142.25</span>
+                      <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">+LKR 26,825.00</span>
                     </div>
 
                     <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/30 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors">
@@ -797,7 +1079,7 @@ const RestaurantWallet = () => {
                           <p className="text-sm text-gray-500 dark:text-gray-400">Withdrawal to bank • 3 days ago</p>
                         </div>
                       </div>
-                      <span className="text-lg font-bold text-blue-600 dark:text-blue-400">-$500.00</span>
+                      <span className="text-lg font-bold text-blue-600 dark:text-blue-400">-LKR 95,000.00</span>
                     </div>
                   </div>
                 </div>
