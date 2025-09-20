@@ -23,7 +23,7 @@ const RestaurantsDisplay = lazy(() => import("../pages/RestaurantsDisplay"));
 const RestaurantMenuList = lazy(() => import("../pages/RestaurantMenuList"));
 const ReservationList = lazy(() => import("../components/customerProfileComponents/ReservationList"));
 const TableAvailability = lazy(() => import("../components/customerProfileComponents/TableAvailability"));
-const Menu = lazy(() => import("../pages/MenuNew"));
+const Menu = lazy(() => import("../components/restaurantProfileComponents/RestaurantOperations"));
 const AuditLogs = lazy(() => import("../components/adminProfileComponents/AdminAuditLogs"));
 
 

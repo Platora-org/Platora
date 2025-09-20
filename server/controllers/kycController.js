@@ -38,6 +38,7 @@ export const getKYCStatus = async (req, res) => {
       user: {
         first_name: userData.first_name,
         last_name: userData.last_name,
+        restaurant_name: userData.restaurant_name,
         email: userData.email
       },
       kycStatus: userData.status || 'NOT_SUBMITTED'

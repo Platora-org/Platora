@@ -10,6 +10,7 @@ export const getRestaurantById = async (userId) => {
       u.phone,
       u.role,
       r.restaurant_name AS "restaurantName",
+      r.id AS "restaurantId",
       r.cuisine_type AS "cuisineType"
     FROM users u
     LEFT JOIN restaurant_profiles r ON u.id = r.user_id

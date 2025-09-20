@@ -35,7 +35,7 @@ export default function CustomerReservationsTable() {
   return (
     <div className="p-6">
       <h1 className="mb-4 text-2xl font-bold text-gray-900 dark:text-gray-100">
-        Past Reservations (Dummy)
+        Past Reservations
       </h1>
 
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">

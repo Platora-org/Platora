@@ -28,6 +28,7 @@ export const register = async (req, res) => {
       const user_restaurant = await createRestaurantProfile(user.id, restaurantName || "");
       console.log(user_restaurant)
       userDataForResponse.restaurant_name = user_restaurant.restaurant_name;
+      userDataForResponse.restaurant_id = user_restaurant.id;
     }
  
       const token = generateToken(userDataForResponse);
@@ -101,6 +102,7 @@ export const addDeliveryAgent = async (req, res) => {
 }
 
 export const login = (req, res, redirect = false) => {
+
   const token = generateToken(req.user);
   
   res.cookie('token', token, {

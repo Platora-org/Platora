@@ -7,7 +7,9 @@ export const generateToken = (user) => {
   const lastName = user.restaurantProfile?.lastName || user.last_name || '';
   const email = user.restaurantProfile?.email || user.email || '';
   const role = user.role || (user.restaurantProfile?.role || '');
-  const restaurantName = user.restaurantProfile?.restaurantName || user.restaurantProfile?.restaurant_name || '';
+  const restaurantName = user.restaurantProfile?.restaurantName || user.restaurant_name || '';
+  const restaurantId = user.restaurantProfile?.restaurantId || user.restaurant_id || '';
+
 
   // Add restaurantName only if role === 'restaurant' and it exists
   const payload = {
@@ -16,11 +18,11 @@ export const generateToken = (user) => {
     firstName,
     lastName,
     email,
-    restaurantName
   };
 
   if (role === 'restaurant' && user.restaurantProfile?.restaurantName) {
-    payload.restaurantName = user.restaurantProfile.restaurantName;
+    payload.restaurantName = restaurantName;
+    payload.restaurantId = restaurantId;
   }
 
   return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '3h' });

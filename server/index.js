@@ -12,6 +12,7 @@ import kycRoutes from './routes/kycRoutes.js';
 import auditRoutes from './routes/auditRoutes.js';
 import restaurantsListRoutes from './routes/restaurantsListRoutes.js'
 import menuListRoutes from './routes/menuListRoutes.js'
+import categoryRoutes from './routes/categoriesRoutes.js'
 
 const app = express();
 const port = 3000;
@@ -40,6 +41,7 @@ app.use('/customer/profile', customerProfileRoutes);
 app.use('/admin/profile', adminProfileRoutes);
 app.use('/restaurants/data', restaurantsListRoutes);
 app.use('/restaurants/menu', menuListRoutes);
+app.use('/restaurants/menuCategories', categoryRoutes);
 
 app.use('/api/restaurant/kyc', kycRoutes);
 
