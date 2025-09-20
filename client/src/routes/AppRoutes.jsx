@@ -20,8 +20,12 @@ const DeliveryAgentDashboard = lazy(() => import("../pages/DeliveryAgentDashboar
 const CustomerReservation = lazy(() => import("../components/customerProfileComponents/CustomerReservation"))
 const kycrequests = lazy(() => import("../components/adminProfileComponents/AdminKycApproval"));
 const RestaurantsDisplay = lazy(() => import("../pages/RestaurantsDisplay"));
+const RestaurantMenuList = lazy(() => import("../pages/RestaurantMenuList"));
 const ReservationList = lazy(() => import("../components/customerProfileComponents/ReservationList"));
 const TableAvailability = lazy(() => import("../components/customerProfileComponents/TableAvailability"));
+const Menu = lazy(() => import("../components/restaurantProfileComponents/RestaurantOperations"));
+const AuditLogs = lazy(() => import("../components/adminProfileComponents/AdminAuditLogs"));
+
 
 export const appRoutes = [
   {
@@ -33,6 +37,12 @@ export const appRoutes = [
   {
     path: "/restaurants",
     component: RestaurantsDisplay,
+    requiresAuth: true,
+    allowedRoles: ["customer", "guest"],
+  },
+  {
+    path: "/restaurants/:id/menu",
+    component: RestaurantMenuList,
     requiresAuth: true,
     allowedRoles: ["customer", "guest"],
   },
@@ -115,6 +125,10 @@ export const appRoutes = [
         path: "wallet",
         component: RestaurantWallet, 
       },
+      {
+        path: "menu",
+        component: Menu, 
+      },
     ]
   },
 
@@ -136,6 +150,10 @@ export const appRoutes = [
         path: "kycrequests",
         component: kycrequests,
       },
+      {
+        path: "auditlogs",
+        component: AuditLogs,
+      }
     ]
   },
 

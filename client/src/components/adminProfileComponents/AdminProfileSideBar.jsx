@@ -111,8 +111,9 @@ const AdminProfileSideBar = ({ onLogout, loggedUser }) => {
         </svg>
       ),
       children: [
-        { label: "Kyc Requests", href: "/admin/kycrequests" },
-      ],
+        { label: "KYC Management", href: "/admin/kycrequests" },
+        { label: "Audit Logs", href: "/admin/auditlogs" },
+      ], 
     },
   ];
 

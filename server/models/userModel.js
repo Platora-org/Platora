@@ -35,10 +35,12 @@ export const createDeliveryAgent = async (user_id) => {
 };
 
 export const createRestaurantProfile = async (user_id, restaurant_name) => {
-  await pool.query(
-    "INSERT INTO restaurant_profiles (user_id, restaurant_name) VALUES ($1, $2)",
+  const result = await pool.query(
+    "INSERT INTO restaurant_profiles (user_id, restaurant_name) VALUES ($1, $2) RETURNING *",
     [user_id, restaurant_name]
   );
+  
+  return result.rows[0];
 };
 
 export const findByIdAndDelete = async (id) => {
