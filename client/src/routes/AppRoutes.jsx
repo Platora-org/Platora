@@ -25,6 +25,7 @@ const ReservationList = lazy(() => import("../components/customerProfileComponen
 const TableAvailability = lazy(() => import("../components/customerProfileComponents/TableAvailability"));
 const Menu = lazy(() => import("../pages/MenuNew"));
 const AuditLogs = lazy(() => import("../components/adminProfileComponents/AdminAuditLogs"));
+const CustomerWallet = lazy(() => import("../components/customerProfileComponents/CustomerWalletDashboard"));
 
 
 export const appRoutes = [
@@ -99,6 +100,10 @@ export const appRoutes = [
        {
         path: "reservations",
         component: ReservationList,
+      },
+      {
+        path: "wallet",
+        component: CustomerWallet, 
       },
      
     ]
