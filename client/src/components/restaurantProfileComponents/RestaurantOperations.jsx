@@ -11,7 +11,7 @@ import CategoriesManager from "./CategoriesManager"
 import LowStockPanel from "./LowStockPanel"
 
 
-import { Card, Button } from "./MenuUI"
+import { Card, Button, NotificationBadge } from "./MenuUI"
 
 const StoreOperations = () => {
   const [categories, setCategories] = useState([]);
@@ -19,6 +19,11 @@ const StoreOperations = () => {
   const [inventory, setInventory] = useState([]);
   const [lowStock, setLowStock] = useState([]);
   const [tab, setTab] = useState("menu");
+
+  const notifications = lowStock.map((item) => ({
+    id: item.id,
+    message: `${item.name} is below reorder level (${item.quantity} ${item.unit})`,
+  }));
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,6 +44,7 @@ const StoreOperations = () => {
     };
     fetchData();
   }, []);
+
 
   // --- Categories CRUD Handlers ---
 
@@ -139,37 +145,121 @@ const createCat = async (payload) => {
   const recomputeLowStock = (list) => list.filter((i) => Number(i.quantity) < Number(i.reorder_level));
 
   const createInv = async (payload) => {
+  try {
     const res = await api.createInventoryItem(payload);
+
     setInventory((i) => {
       const next = [...i, res];
       setLowStock(recomputeLowStock(next));
       return next;
     });
-  };
-  const updateInv = async (id, payload) => {
+
+    toast.success("Inventory item created successfully");
+  } catch (error) {
+    console.error("Failed to create inventory item:", error);
+
+    if (error.response) {
+      const status = error.response.status;
+      const message = error.response.data?.message || "Failed to create item";
+
+      if (status === 400) toast.error("Invalid inventory name or missing unit");
+      else if (status === 409) toast.error("Inventory with this name already exists");
+      else toast.error(message);
+    } else {
+      toast.error("Network error: Failed to create item");
+    }
+  }
+};
+
+const updateInv = async (id, payload) => {
+  try {
     const updated = await api.updateInventoryItem(id, payload);
+
     setInventory((i) => {
       const next = i.map((x) => (x.id === id ? { ...x, ...updated } : x));
       setLowStock(recomputeLowStock(next));
       return next;
     });
-  };
-  const deleteInv = async (id) => {
+
+    toast.success("Inventory item updated successfully");
+  } catch (error) {
+    console.error("Failed to update inventory item:", error);
+
+    if (error.response) {
+      const status = error.response.status;
+      const message = error.response.data?.message || "Failed to update item";
+
+      if (status === 400) toast.error("Invalid inventory name or missing unit");
+      else if (status === 409) toast.error("Inventory with this name already exists");
+      else if (status === 404) toast.error("Item not found");
+      else toast.error(message);
+    } else {
+      toast.error("Network error: Failed to update item");
+    }
+  }
+};
+
+const deleteInv = async (id) => {
+  try {
     await api.deleteInventoryItem(id);
+
     setInventory((i) => {
       const next = i.filter((x) => x.id !== id);
       setLowStock(recomputeLowStock(next));
       return next;
     });
-  };
-  const adjustInv = async (id, payload) => {
+
+    toast.success("Inventory item deleted successfully");
+  } catch (error) {
+    console.error("Failed to delete inventory item:", error);
+
+    if (error.response) {
+      const status = error.response.status;
+      const message = error.response.data?.message || "Failed to delete item";
+
+      if (status === 404) toast.error("Item not found");
+      else toast.error(message);
+    } else {
+      toast.error("Network error: Failed to delete item");
+    }
+  }
+};
+
+const adjustInv = async (id, payload) => {
+  try {
     await api.adjustInventory(id, payload);
+
     setInventory((i) => {
-      const next = i.map((x) => (x.id === id ? { ...x, quantity: Math.max(0, Number(x.quantity) + (payload.direction === "in" ? Number(payload.quantity) : -Number(payload.quantity))) } : x));
+      const next = i.map((x) =>
+        x.id === id
+          ? {
+              ...x,
+              quantity: Math.max(
+                0,
+                Number(x.quantity) +
+                  (payload.direction === "in"
+                    ? Number(payload.quantity)
+                    : -Number(payload.quantity))
+              ),
+            }
+          : x
+      );
       setLowStock(recomputeLowStock(next));
       return next;
     });
-  };
+
+    toast.success("Inventory adjusted successfully");
+  } catch (error) {
+    console.error("Failed to adjust inventory:", error);
+
+    if (error.response) {
+      const message = error.response.data?.message || "Failed to adjust inventory";
+      toast.error(message);
+    } else {
+      toast.error("Network error: Failed to adjust inventory");
+    }
+  }
+};
 
   // --- Recipe Handler ---
   const saveRecipe = async (menuId, ingredients) => {
@@ -194,11 +284,20 @@ const createCat = async (payload) => {
           </div>
         </div>
         <div className="mb-6 flex flex-wrap gap-2">
-          {tabs.map((t) => (
-            <Button key={t.key} onClick={() => setTab(t.key)} variant={t.key === tab ? "primary" : "ghost"}>
+                    {tabs.map((t) => (
+            <Button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              variant={t.key === tab ? "primary" : "ghost"}
+              className="relative"
+            >
               <t.icon className="w-4 h-4" /> {t.label}
+              {t.key === "notifications" && (
+                <NotificationBadge count={notifications.length} />
+              )}
             </Button>
           ))}
+
         </div>
         <div className="space-y-6">
           {tab === "menu" && <MenuManager menu={menu} categories={categories} onCreate={createMenu} onUpdate={updateMenu} onDelete={deleteMenu} />}

@@ -159,3 +159,25 @@ create table menu_items (
   is_active boolean default true,
   created_at timestamptz default now()
 );
+
+
+CREATE TABLE inventory_items (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL CHECK (name ~ '^[A-Za-z0-9 ]+$'), -- no !@#$, only alphanumeric + spaces
+    unit TEXT NOT NULL,
+    quantity NUMERIC(12,2) NOT NULL DEFAULT 0,  -- allows fractional quantities (e.g., 0.5 kg)
+    reorder_level NUMERIC(12,2) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now()
+);
+
+CREATE TABLE inventory_adjustments (
+    id SERIAL PRIMARY KEY,
+    item_id INT REFERENCES inventory_items(id) ON DELETE SET NULL,
+    item_name VARCHAR(100),
+    direction VARCHAR(10) NOT NULL CHECK (direction IN ('in','out')),
+    quantity NUMERIC(12,2) NOT NULL CHECK (quantity > 0),
+    reason TEXT,
+    created_at TIMESTAMP DEFAULT now()
+);
+

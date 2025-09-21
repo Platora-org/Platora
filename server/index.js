@@ -13,6 +13,7 @@ import auditRoutes from './routes/auditRoutes.js';
 import restaurantsListRoutes from './routes/restaurantsListRoutes.js'
 import menuListRoutes from './routes/menuListRoutes.js'
 import categoryRoutes from './routes/categoriesRoutes.js'
+import inventoryRoutes from './routes/inventoryRoutes.js'
 
 const app = express();
 const port = 3000;
@@ -42,10 +43,13 @@ app.use('/admin/profile', adminProfileRoutes);
 app.use('/restaurants/data', restaurantsListRoutes);
 app.use('/restaurants/menu', menuListRoutes);
 app.use('/restaurants/menuCategories', categoryRoutes);
+app.use('/restaurants/inventory', inventoryRoutes);
 
 app.use('/api/restaurant/kyc', kycRoutes);
 
 app.use('/api/audit', auditRoutes);
+
+
 
 
 app.listen(port, () => {

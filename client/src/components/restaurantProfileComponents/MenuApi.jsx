@@ -1,3 +1,5 @@
+import axiosInstance from '../../utils/axiosInstance';
+
 export const api = {
   async listCategories() {
     return [
@@ -24,18 +26,27 @@ export const api = {
   async createMenuItem(payload) { return { id: uuid(), ...payload }; },
   async updateMenuItem(id, payload) { return { id, ...payload }; },
   async deleteMenuItem(id) { return { ok: true, id }; },
-  async listInventory() {
-    return [
-      { id: "i-1", name: "Chicken", unit: "g", quantity: 1800, reorder_level: 2000 },
-      { id: "i-2", name: "Rice", unit: "g", quantity: 10000, reorder_level: 5000 },
-      { id: "i-3", name: "Curry Paste", unit: "g", quantity: 800, reorder_level: 1000 },
-      { id: "i-4", name: "Tea Leaves", unit: "g", quantity: 300, reorder_level: 400 },
-    ];
+   async listInventory() {
+    const res = await axiosInstance.get('/restaurants/inventory/');
+    // returns array of items (as used by StoreOperations)
+    return res.data;
   },
-  async createInventoryItem(payload) { return { id: uuid(), ...payload }; },
-  async updateInventoryItem(id, payload) { return { id, ...payload }; },
-  async deleteInventoryItem(id) { return { ok: true, id }; },
-  async adjustInventory(id, { direction, quantity, reason }) { return { id, direction, quantity, reason }; },
+  async createInventoryItem(payload) {
+    // payload shape from InventoryItemModal: { name, unit, quantity, reorder_level }
+    const res = await axiosInstance.post('/restaurants/inventory/', payload);
+    return res.data;
+  },
+  async updateInventoryItem(id, payload) {
+    const res = await axiosInstance.put(`/restaurants/inventory/${id}`, payload);
+    return res.data;
+  },
+   async deleteInventoryItem(id) {
+    return axiosInstance.delete(`/restaurants/inventory/${id}`);
+  },
+  async adjustInventory(id, payload) {
+    // payload: { direction: 'in'|'out', quantity, reason? }
+    return axiosInstance.patch(`/restaurants/inventory/${id}/adjust`, payload);
+  },
   async listRecipe(menuItemId) {
     if (menuItemId === "m-1") {
       return [
