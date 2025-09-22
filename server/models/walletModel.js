@@ -115,68 +115,86 @@ export const getWalletStats = async (userId) => {
 };
 
 // Check daily/monthly limits
-export const checkTransactionLimits = async (userId, amount) => {
+export const checkTransactionLimits = async (userId, amountLKR) => {
   const query = `
     SELECT 
-      w.daily_limit,
-      w.monthly_limit,
-      COALESCE(daily.daily_spent, 0) as daily_spent,
-      COALESCE(monthly.monthly_spent, 0) as monthly_spent
+      COALESCE(ws.daily_spend_limit, 1000000) as daily_limit,
+      COALESCE(ws.monthly_spend_limit, 10000000) as monthly_limit,
+      COALESCE(daily.daily_spent_lkr, 0) as daily_spent,
+      COALESCE(monthly.monthly_spent_lkr, 0) as monthly_spent
     FROM wallets w
+    LEFT JOIN wallet_settings ws ON w.user_id = ws.user_id
     LEFT JOIN (
       SELECT 
         user_id,
-        SUM(amount_money) as daily_spent
+        -- Convert all amounts to LKR using base coin value
+        SUM(amount_coins * 50) as daily_spent_lkr
       FROM transactions
-      WHERE user_id = $1 
+      WHERE user_id = $1
         AND transaction_type = 'PURCHASE'
         AND status = 'COMPLETED'
         AND DATE(created_at) = CURRENT_DATE
+      GROUP BY user_id
     ) daily ON w.user_id = daily.user_id
     LEFT JOIN (
       SELECT 
         user_id,
-        SUM(amount_money) as monthly_spent
+        -- Convert all amounts to LKR using base coin value
+        SUM(amount_coins * 50) as monthly_spent_lkr
       FROM transactions
-      WHERE user_id = $1 
+      WHERE user_id = $1
         AND transaction_type = 'PURCHASE'
         AND status = 'COMPLETED'
         AND DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)
+      GROUP BY user_id
     ) monthly ON w.user_id = monthly.user_id
     WHERE w.user_id = $1
   `;
   
-  const result = await pool.query(query, [userId, userId]);
+  const result = await pool.query(query, [userId]);
   
   if (result.rows.length === 0) {
     return { valid: false, message: 'Wallet not found' };
   }
   
   const limits = result.rows[0];
+
+  // Parse to integers to ensure proper comparison
+  const dailySpent = parseInt(limits.daily_spent) || 0;
+  const monthlySpent = parseInt(limits.monthly_spent) || 0;
+  const dailyLimit = parseInt(limits.daily_limit);
+  const monthlyLimit = parseInt(limits.monthly_limit);
   
-  if ((limits.daily_spent + amount) > limits.daily_limit) {
+  console.log('Limit Check:', {
+    userId,
+    amountLKR,
+    daily_spent: dailySpent,
+    daily_limit: dailyLimit,
+    would_exceed: (dailySpent + amountLKR) > dailyLimit
+  });
+  
+  if ((dailySpent + amountLKR) > dailyLimit) {
     return { 
       valid: false, 
       message: 'Daily limit exceeded',
-      dailyRemaining: Math.max(0, limits.daily_limit - limits.daily_spent)
+      dailyRemaining: Math.max(0, dailyLimit - dailySpent)
     };
   }
   
-  if ((limits.monthly_spent + amount) > limits.monthly_limit) {
+  if ((monthlySpent + amountLKR) > monthlyLimit) {
     return { 
       valid: false, 
       message: 'Monthly limit exceeded',
-      monthlyRemaining: Math.max(0, limits.monthly_limit - limits.monthly_spent)
+      monthlyRemaining: Math.max(0, monthlyLimit - monthlySpent)
     };
   }
   
   return { 
     valid: true,
-    dailyRemaining: limits.daily_limit - limits.daily_spent - amount,
-    monthlyRemaining: limits.monthly_limit - limits.monthly_spent - amount
+    dailyRemaining: dailyLimit - dailySpent - amountLKR,
+    monthlyRemaining: monthlyLimit - monthlySpent - amountLKR
   };
 };
-
 // PIN MANAGEMENT FUNCTIONS (Consolidated and Enhanced)
 
 // Update wallet PIN

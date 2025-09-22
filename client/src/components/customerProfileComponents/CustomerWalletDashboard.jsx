@@ -107,10 +107,17 @@ const stripeHelper = {
   confirmPayment: async (clientSecret, elements, returnUrl = window.location.origin) => {
     if (!stripeHelper.stripe) throw new Error('Stripe not initialized');
     
+    // For test mode, use a test payment method
     const { error, paymentIntent } = await stripeHelper.stripe.confirmPayment({
-      elements,
       clientSecret,
-      confirmParams: { return_url: returnUrl },
+      confirmParams: {
+        payment_method_data: {
+          type: 'card',
+          card: {
+            token: 'tok_visa' // Stripe test token that always succeeds
+          }
+        }
+      },
       redirect: 'if_required'
     });
 
@@ -239,6 +246,189 @@ const PINModal = ({ isOpen, onClose, onVerify, title = "Enter PIN", isNewPIN = f
   );
 };
 
+const getCurrencySymbol = (currency) => {
+    const symbols = {
+      'LKR': 'Rs.', 'USD': '$', 'EUR': '€', 'GBP': '£', 'AUD': 'A$', 'JPY': '¥'
+    };
+    return symbols[currency] || currency;
+  };
+
+// Payment Modal Component
+const PaymentModal = ({ isOpen, onClose, onSuccess, clientSecret, amount, currency, coins }) => {
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState('');
+  const [stripe, setStripe] = useState(null);
+  const [elements, setElements] = useState(null);
+
+  useEffect(() => {
+    if (isOpen && !stripe) {
+      initializeStripe();
+    }
+  }, [isOpen]);
+
+  const initializeStripe = async () => {
+    if (!window.Stripe) {
+      const script = document.createElement('script');
+      script.src = 'https://js.stripe.com/v3/';
+      document.head.appendChild(script);
+      
+      script.onload = () => {
+        const stripeInstance = window.Stripe(STRIPE_PUBLISHABLE_KEY);
+        setStripe(stripeInstance);
+      };
+    } else {
+      setStripe(window.Stripe(STRIPE_PUBLISHABLE_KEY));
+    }
+  };
+
+  useEffect(() => {
+    if (stripe && isOpen) {
+      const elementsInstance = stripe.elements();
+      setElements(elementsInstance);
+
+      const cardElement = elementsInstance.create('card', {
+        style: {
+          base: {
+            fontSize: '16px',
+            color: '#424770',
+            '::placeholder': {
+              color: '#aab7c4',
+            },
+          },
+          invalid: {
+            color: '#9e2146',
+          },
+        },
+      });
+
+      cardElement.mount('#card-element');
+
+      return () => {
+        cardElement.unmount();
+      };
+    }
+  }, [stripe, isOpen]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    setError('');
+
+    try {
+      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
+        clientSecret,
+        {
+          payment_method: {
+            card: elements.getElement('card'),
+          },
+        }
+      );
+
+      if (stripeError) {
+        setError(stripeError.message);
+        setIsProcessing(false);
+        return;
+      }
+
+      if (paymentIntent.status === 'succeeded') {
+        await onSuccess(paymentIntent.id);
+        onClose();
+      }
+    } catch (err) {
+      setError(err.message);
+      setIsProcessing(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+            Complete Payment
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+            disabled={isProcessing}
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="mb-6">
+          <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-4 mb-4">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600 dark:text-gray-400">Amount:</span>
+              <span className="text-xl font-bold text-emerald-600">
+                {getCurrencySymbol(currency)}{amount} {currency}
+              </span>
+            </div>
+            <div className="flex justify-between items-center mt-2">
+              <span className="text-gray-600 dark:text-gray-400">Coins:</span>
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {coins} coins
+              </span>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3 mb-4">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              <strong>Test Card Numbers:</strong>
+            </p>
+            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+              4242 4242 4242 4242 (Success)<br />
+              Any future date, any 3 digits for CVC
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit}>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Card Details
+              </label>
+              <div id="card-element" className="p-3 border rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700"></div>
+            </div>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+
+            <div className="flex space-x-3">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isProcessing}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isProcessing}
+                className="flex-1 bg-emerald-500 text-white px-4 py-2 rounded-lg hover:bg-emerald-600 disabled:opacity-50 flex items-center justify-center"
+              >
+                {isProcessing ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  `Pay ${getCurrencySymbol(currency)}${amount}`
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const PlatoraWalletDashboard = () => {
   const { user } = useAuth();
   const [coinsToBuy, setCoinsToBuy] = useState(10);
@@ -268,6 +458,8 @@ const PlatoraWalletDashboard = () => {
     monthlyTrends: [],
     categorySpending: []
   });
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+ const [pendingPaymentData, setPendingPaymentData] = useState(null);
   const [paymentAmount, setPaymentAmount] = useState('0.00');
 
   const COIN_BASE_VALUE_LKR = 50;
@@ -514,7 +706,7 @@ const PlatoraWalletDashboard = () => {
         const monthlyData = data.analytics.monthlyTrends?.map(trend => ({
           month: new Date(trend.month).toLocaleDateString('en', { month: 'short' }),
           coins: parseInt(trend.total_coins),
-          amount: parseInt(trend.total_money || 0)
+          amount: parseInt(trend.total_coins || 0) * 50
         })) || [];
         setAnalytics({
           spendingByType: data.analytics.spendingByType || [],
@@ -560,60 +752,55 @@ const PlatoraWalletDashboard = () => {
     }
   };
 
-  const handleCoinPurchase = async () => {
-    setIsLoading(true);
-    setError('');
-    try {
-      if (coinsToBuy > 100) {
-        await requirePIN('purchase', 'Confirm purchase with PIN');
-      }
-      const paymentData = await walletAPI.createPaymentIntent(coinsToBuy, selectedCurrency);
-      if (!paymentData.success) {
-        throw new Error(paymentData.message);
-      }
-      if (!stripeHelper.stripe) {
-        await stripeHelper.initialize(STRIPE_PUBLISHABLE_KEY);
-      }
-      const elements = stripeHelper.createElements();
-      const paymentElement = elements.create('payment');
-      const tempContainer = document.createElement('div');
-      tempContainer.id = 'temp-stripe-container';
-      tempContainer.style.display = 'none';
-      document.body.appendChild(tempContainer);
-      paymentElement.mount('#temp-stripe-container');
-      const paymentResult = await stripeHelper.confirmPayment(
-        paymentData.clientSecret,
-        elements,
-        window.location.origin
-      );
-      document.body.removeChild(tempContainer);
-      if (paymentResult.status === 'succeeded') {
-        const processResult = await walletAPI.processSuccessfulPayment(paymentResult.id);
-        if (processResult.success) {
-          await loadWallet();
-          await loadTransactions();
-          setSuccessMessage(`Successfully purchased ${coinsToBuy} coins!`);
-          setCoinsToBuy(10);
-        } else {
-          throw new Error('Payment succeeded but failed to update wallet');
-        }
-      } else {
-        throw new Error('Payment failed or was cancelled');
-      }
-    } catch (error) {
-      console.error('Purchase failed:', error);
-      setError(`Payment failed: ${error.response?.data?.message || error.message}`);
-    } finally {
-      setIsLoading(false);
+const handleCoinPurchase = async () => {
+  setIsLoading(true);
+  setError('');
+  
+  try {
+    if (coinsToBuy > 100) {
+      await requirePIN('purchase', 'Confirm purchase with PIN');
     }
-  };
 
-  const getCurrencySymbol = (currency) => {
-    const symbols = {
-      'LKR': 'Rs.', 'USD': '$', 'EUR': '€', 'GBP': '£', 'AUD': 'A$', 'JPY': '¥'
-    };
-    return symbols[currency] || currency;
-  };
+    const paymentData = await walletAPI.createPaymentIntent(coinsToBuy, selectedCurrency);
+    
+    if (!paymentData.success) {
+      throw new Error(paymentData.message);
+    }
+
+    // Store payment data and show payment modal
+    setPendingPaymentData(paymentData);
+    setShowPaymentModal(true);
+    
+  } catch (error) {
+    console.error('Purchase failed:', error);
+    setError(`Payment failed: ${error.message}`);
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+const handlePaymentSuccess = async (paymentIntentId) => {
+  setIsLoading(true);
+  try {
+    const processResult = await walletAPI.processSuccessfulPayment(paymentIntentId);
+    
+    if (processResult.success) {
+      await loadWallet();
+      await loadTransactions();
+      
+      setSuccessMessage(`Successfully purchased ${coinsToBuy} coins!`);
+      setCoinsToBuy(10);
+      setShowPaymentModal(false);
+      setPendingPaymentData(null);
+    } else {
+      throw new Error('Payment succeeded but failed to update wallet');
+    }
+  } catch (error) {
+    setError(error.message);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   // Loading state
   if (initialLoading) {
@@ -742,23 +929,15 @@ const PlatoraWalletDashboard = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center">
-              <UtensilsCrossed className="w-8 h-8 text-emerald-500 mr-3" />
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Platora Wallet</h1>
-                <p className="text-gray-600 dark:text-gray-400">Food Court Digital Payment System</p>
-              </div>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center">
+            <UtensilsCrossed className="w-8 h-8 text-emerald-500 mr-3" />
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Platora Wallet</h1>
+              <p className="text-gray-600 dark:text-gray-400">Food Court Digital Payment System</p>
             </div>
-            <button
-              onClick={updateExchangeRates}
-              disabled={isLoadingRates}
-              className="flex items-center px-4 py-2 rounded-lg transition-colors bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400"
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${isLoadingRates ? 'animate-spin' : ''}`} />
-              Update Rates
-            </button>
           </div>
+        </div>
           
           {/* Alerts */}
           {error && (
@@ -839,7 +1018,7 @@ const PlatoraWalletDashboard = () => {
               <Coins className="w-6 h-6 text-emerald-500 mr-3" />
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">1 Coin Value</h2>
             </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">Live rates • Auto-updates every 30s</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">Live rates • Auto-updates every 01hr</div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {Object.entries(exchangeRates).map(([currency, rate]) => {
@@ -1071,6 +1250,21 @@ const PlatoraWalletDashboard = () => {
           title={pinModalConfig.title}
           isNewPIN={pinModalConfig.isNewPIN}
         />
+        {/* Payment Modal - Add this before the closing </div> of your main component */}
+        {showPaymentModal && pendingPaymentData && (
+          <PaymentModal
+            isOpen={showPaymentModal}
+            onClose={() => {
+              setShowPaymentModal(false);
+              setPendingPaymentData(null);
+            }}
+            onSuccess={handlePaymentSuccess}
+            clientSecret={pendingPaymentData.clientSecret}
+            amount={paymentAmount}
+            currency={selectedCurrency}
+            coins={coinsToBuy}
+          />
+        )}
       </div>
     </div>
   );

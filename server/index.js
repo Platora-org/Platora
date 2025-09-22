@@ -62,7 +62,7 @@ app.use('/api/wallet', (req, res, next) => {
 app.use('/api/wallet', walletRoutes);
 
 
-cron.schedule('0 */4 * * *', async () => {
+cron.schedule('0 */1 * * *', async () => {
   console.log('Auto-updating exchange rates from Alpha Vantage...');
   try {
     const result = await WalletService.updateExchangeRates();

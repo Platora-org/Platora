@@ -179,7 +179,7 @@ export const validatePaymentIntent = [
     .withMessage('Invalid currency. Supported currencies: USD, EUR, GBP, AUD, JPY'),
   handleValidationErrors,
   // Additional middleware to check daily/monthly limits
-  async (req, res, next) => {
+  /*async (req, res, next) => {
     try {
       const userId = req.user.id;
       const { coins } = req.body;
@@ -209,7 +209,7 @@ export const validatePaymentIntent = [
         message: 'Failed to validate transaction limits'
       });
     }
-  }
+  }*/
 ];
 
 // PIN setup validation

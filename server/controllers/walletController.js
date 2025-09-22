@@ -798,6 +798,7 @@ export const createPaymentIntent = async (req, res) => {
     
     // Check transaction limits
     const limitCheck = await WalletModel.checkTransactionLimits(userId, totalLKR);
+
     if (!limitCheck.valid) {
       return res.status(400).json({
         success: false,
@@ -834,12 +835,12 @@ export const createPaymentIntent = async (req, res) => {
 
     const user = userResult.rows[0];
 
-    // Create payment intent
+    // Create payment intent via service
     const paymentResult = await WalletService.createPaymentIntent({
-      amount,
-      currency,
-      userId,
-      coins,
+      amount: amount,
+      currency: currency,
+      userId: userId,
+      coins: coins,
       customerEmail: user.email,
       description: `Purchase ${coins} coins for ${currency} ${amount.toFixed(2)}`
     });
@@ -885,7 +886,6 @@ export const createPaymentIntent = async (req, res) => {
     client.release();
   }
 };
-
 // Process successful payment (replaces webhook functionality)
 export const processSuccessfulPayment = async (req, res) => {
   const client = await pool.connect();

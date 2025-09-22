@@ -941,9 +941,5 @@ BEFORE UPDATE ON transactions
 FOR EACH ROW
 EXECUTE FUNCTION update_transactions_updated_at();
 
--- Only create this if payment_intents table exists
--- CREATE TRIGGER trg_update_payment_intents_updated_at
--- BEFORE UPDATE ON payment_intents
--- FOR EACH ROW
--- EXECUTE FUNCTION update_payment_intents_updated_at();
+ALTER TABLE transactions ADD COLUMN processed_at TIMESTAMP;
 -------------------------------------------------------------------------------------------------------    

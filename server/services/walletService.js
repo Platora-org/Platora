@@ -360,34 +360,33 @@ export const createPaymentIntent = async ({
 // Get or create Stripe customer
 const getOrCreateStripeCustomer = async (userId, email) => {
   try {
-    // Check if user already has a Stripe customer ID
-    const userQuery = await pool.query(
-      'SELECT stripe_customer_id FROM users WHERE id = $1',
+    // Check if customer already exists in database
+    const existingCustomer = await pool.query(
+      'SELECT stripe_customer_id FROM users WHERE id = $1 AND stripe_customer_id IS NOT NULL',
       [userId]
     );
-    
-    if (userQuery.rows[0]?.stripe_customer_id) {
-      return userQuery.rows[0].stripe_customer_id;
+
+    if (existingCustomer.rows.length > 0) {
+      return existingCustomer.rows[0].stripe_customer_id;
     }
-    
+
     // Create new Stripe customer
     const customer = await stripe.customers.create({
-      email,
+      email: email,
       metadata: {
         userId: userId.toString()
       }
     });
-    
-    // Update user with Stripe customer ID
+
+    // Save customer ID to database
     await pool.query(
       'UPDATE users SET stripe_customer_id = $1 WHERE id = $2',
       [customer.id, userId]
     );
-    
+
     return customer.id;
-    
   } catch (error) {
-    console.error('Error getting/creating Stripe customer:', error);
+    console.error('Error creating Stripe customer:', error);
     throw error;
   }
 };
@@ -397,19 +396,27 @@ export const processSuccessfulPayment = async (paymentIntentId, userId, client =
   const queryClient = client || pool;
   
   try {
+    console.log('=== PROCESS SUCCESSFUL PAYMENT START ===');
+    console.log('Payment Intent ID:', paymentIntentId);
+    console.log('User ID:', userId);
+    
     // Get payment intent from Stripe
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    console.log('Stripe Payment Status:', paymentIntent.status);
     
     if (paymentIntent.status !== 'succeeded') {
+      console.log('Payment not succeeded yet, current status:', paymentIntent.status);
       return {
         success: false,
-        message: 'Payment has not succeeded yet'
+        message: `Payment has not succeeded yet. Current status: ${paymentIntent.status}`
       };
     }
     
     // Check if already processed
+    console.log('Checking for existing transaction...');
     const existingTransaction = await TransactionModel.getTransactionByStripePaymentIntent(paymentIntentId);
     if (existingTransaction) {
+      console.log('Transaction already exists:', existingTransaction.id);
       return {
         success: false,
         message: 'Payment already processed'
@@ -417,21 +424,25 @@ export const processSuccessfulPayment = async (paymentIntentId, userId, client =
     }
     
     // Get payment intent from database
+    console.log('Fetching payment intent from database...');
     const paymentIntentQuery = await queryClient.query(
       'SELECT * FROM payment_intents WHERE stripe_payment_intent_id = $1 AND user_id = $2',
       [paymentIntentId, userId]
     );
     
     if (paymentIntentQuery.rows.length === 0) {
+      console.log('Payment intent not found in database');
       return {
         success: false,
-        message: 'Payment intent not found'
+        message: 'Payment intent not found in database'
       };
     }
     
     const dbPaymentIntent = paymentIntentQuery.rows[0];
     const coins = dbPaymentIntent.amount_coins;
     const amountMoney = dbPaymentIntent.amount_money;
+    
+    console.log('Creating transaction for', coins, 'coins, amount:', amountMoney);
     
     // Create transaction record
     const transactionData = {
@@ -452,16 +463,24 @@ export const processSuccessfulPayment = async (paymentIntentId, userId, client =
       }
     };
     
+    console.log('Creating transaction...');
     const transaction = await TransactionModel.createTransaction(transactionData, queryClient);
+    console.log('Transaction created:', transaction.id);
     
     // Update wallet balance
+    console.log('Updating wallet balance...');
     await WalletModel.updateBalance(userId, coins, 0, queryClient);
+    console.log('Wallet balance updated');
     
     // Update payment intent status
+    console.log('Updating payment intent status...');
     await queryClient.query(
       'UPDATE payment_intents SET status = $1, processed_at = NOW() WHERE stripe_payment_intent_id = $2',
       ['succeeded', paymentIntentId]
     );
+    console.log('Payment intent status updated');
+    
+    console.log('=== PROCESS SUCCESSFUL PAYMENT COMPLETE ===');
     
     return {
       success: true,
@@ -471,10 +490,15 @@ export const processSuccessfulPayment = async (paymentIntentId, userId, client =
     };
     
   } catch (error) {
-    console.error('Error processing successful payment:', error);
+    console.error('=== PROCESS SUCCESSFUL PAYMENT ERROR ===');
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('==========================================');
+    
     return {
       success: false,
-      message: 'Failed to process payment'
+      message: `Failed to process payment: ${error.message}`
     };
   }
 };
