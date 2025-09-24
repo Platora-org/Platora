@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -7,6 +7,10 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000",
   withCredentials: true,
 });
+
+//table sizes
+const TABLE_W = 150;
+const TABLE_H = 60;
 
 // ----- local fallback + defaults -----
 const DEFAULT_TABLES = [
@@ -44,18 +48,12 @@ const saveLayout = (tables) => {
   } catch {}
 };
 
-// ----- pill table UI -----
-const TableNode = ({
-  table,
-  occupied,
-  selected,
-  selectable,
-  onSelect,
-}) => {
+// ====== SQUARE table UI ======
+const TableNode = ({ table, occupied, selected, selectable, onSelect }) => {
   const base =
-    "rounded-full px-4 py-2 text-sm font-medium shadow-sm select-none";
+    "rounded-md text-sm font-medium shadow-sm select-none flex flex-col items-center justify-center";
   const colors = occupied
-    ? "bg-rose-200 text-rose-900 dark:bg-rose-900/40 dark:text-rose-200 cursor-not-allowed"
+    ?  "bg-rose-600 text-white dark:bg-rose-700 cursor-not-allowed"
     : selected
     ? "bg-emerald-500 text-white"
     : selectable
@@ -68,16 +66,18 @@ const TableNode = ({
         if (selectable && !occupied) onSelect?.(table.id);
       }}
       className={`${base} ${colors}`}
-      style={{ width: 140, textAlign: "center" }}
+      style={{ width: TABLE_W, height: TABLE_H, textAlign: "center" }}
       title={
         occupied
           ? "Occupied"
-          : `Table ${table.id} • Capacity ${table.capacity} • $${table.price}`
+          : `Table ${table.table_code || table.id} • ${table.capacity} people • $${table.price}`
       }
     >
-      <div className="text-xs opacity-80">Table {table.id}</div>
+      <div className="text-xs opacity-80">
+        {table.table_code || `Table ${table.id}`}
+      </div>
       <div className="text-[11px] opacity-70">
-        {table.capacity} ppl · ${table.price}
+        {table.capacity} people · ${table.price}
       </div>
     </div>
   );
@@ -115,7 +115,6 @@ export default function TableAvailability() {
           setTables(normalized);
           saveLayout(normalized);
         } else {
-          // backend returned nothing -> try local, else defaults
           const local = loadLayout();
           setTables(local?.length ? local : DEFAULT_TABLES);
         }
@@ -260,8 +259,8 @@ export default function TableAvailability() {
                   className="absolute"
                   style={{ left: t.x, top: t.y }}
                 >
-                  <div style={{ width: 140 }}>
-                    <TableNode
+                 <div style={{ width: TABLE_W }}>
+                <TableNode
                       table={t}
                       occupied={occupied}
                       selected={isSelected}
