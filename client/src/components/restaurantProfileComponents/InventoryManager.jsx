@@ -1,38 +1,125 @@
 // src/components/InventoryManager.jsx
 import React, { useMemo, useState, useEffect } from "react";
-import { ShoppingBasket, Plus, Search, Pencil, Trash2, ChevronRight, Save } from "lucide-react";
+import { ShoppingBasket, Plus, Search, Pencil, Trash2, ChevronRight, Save, ChevronLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, SectionHeader, Toolbar, Button, Input, Modal, Th, Td } from "./MenuUI";
+import InventoryAdjustModal from "./InventoryAdjustModal";
 
 const InventoryItemModal = ({ open, onClose, initial, onSubmit }) => {
-    const [form, setForm] = useState(() => initial || { name: "", unit: "g", quantity: 0, reorder_level: 0 });
-    useEffect(() => { setForm(initial || { name: "", unit: "g", quantity: 0, reorder_level: 0 }); }, [initial]);
+    const [form, setForm] = useState(() =>
+        initial || { name: "", unit: "g", quantity: 0, reorder_level: 0 }
+    );
+
+    useEffect(() => {
+        setForm(initial || { name: "", unit: "g", quantity: 0, reorder_level: 0 });
+    }, [initial]);
+
     const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+    // Handler for text fields (letters only)
+    const handleTextChange = (k, value) => {
+        const lettersOnly = value.replace(/[^A-Za-z\s]/g, "");
+        set(k, lettersOnly);
+    };
+
+    // Handler for number fields (digits only, no minus)
+    const handleNumberChange = (k, value) => {
+        const numbersOnly = value.replace(/[^0-9]/g, "");
+        set(k, numbersOnly);
+    };
+
     return (
-        <Modal open={open} onClose={onClose} title={initial ? "Edit Inventory Item" : "New Inventory Item"} footer={<div className="flex justify-end gap-2"><Button variant="secondary" onClick={onClose}>Cancel</Button><Button onClick={() => onSubmit({ ...form, quantity: Number(form.quantity), reorder_level: Number(form.reorder_level) })}><Save className="w-4 h-4" /> Save</Button></div>}>
+        <Modal
+            open={open}
+            onClose={onClose}
+            title={initial ? "Edit Inventory Item" : "New Inventory Item"}
+            footer={
+                <div className="flex justify-end gap-2">
+                    <Button variant="secondary" onClick={onClose}>
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={() =>
+                            onSubmit({
+                                ...form,
+                                quantity: Number(form.quantity),
+                                reorder_level: Number(form.reorder_level),
+                            })
+                        }
+                    >
+                        <Save className="w-4 h-4" /> Save
+                    </Button>
+                </div>
+            }
+        >
             <div className="grid grid-cols-12 gap-4">
+                {/* Name Field (Full Width) */}
                 <div className="col-span-12">
-                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Name</label>
-                    <Input value={form.name} onChange={(e) => set("name", e.target.value)} />
+                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        Name
+                    </label>
+                    <Input
+                        value={form.name}
+                        onChange={(e) => handleTextChange("name", e.target.value)}
+                        placeholder="e.g. Sugar"
+                    />
                 </div>
-                <div className="col-span-6">
-                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Unit</label>
-                    <Input value={form.unit} onChange={(e) => set("unit", e.target.value)} placeholder="e.g. g, ml, pcs" />
+
+                {/* Unit */}
+                <div className="col-span-4">
+                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        Unit
+                    </label>
+                    <select
+                        value={form.unit}
+                        onChange={(e) => set("unit", e.target.value)}
+                        className="w-full rounded-md border border-gray-300 dark:border-gray-700 px-2 py-2 bg-white dark:bg-gray-900"
+                    >
+                        <option value="g">Grams (g)</option>
+                        <option value="kg">Kilograms (kg)</option>
+                        <option value="ml">Milliliters (ml)</option>
+                        <option value="L">Liters (L)</option>
+                        <option value="pcs">Pieces (pcs)</option>
+                        <option value="packet">Packet</option>
+                        <option value="bottle">Bottle</option>
+                    </select>
                 </div>
-                <div className="col-span-3">
-                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Quantity</label>
-                    <Input type="number" min="0" value={form.quantity} onChange={(e) => set("quantity", e.target.value)} />
-                </div>
-                <div className="col-span-3">
-                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Reorder Level</label>
-                    <Input type="number" min="0" value={form.reorder_level} onChange={(e) => set("reorder_level", e.target.value)} />
+
+                {/* Quantity - only on Create */}
+                {!initial && (
+                    <div className="col-span-4">
+                        <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            Quantity
+                        </label>
+                        <Input
+                            type="text"
+                            inputMode="numeric"
+                            value={form.quantity}
+                            onChange={(e) => handleNumberChange("quantity", e.target.value)}
+                        />
+                    </div>
+                )}
+
+                {/* Reorder Level */}
+                <div className={!initial ? "col-span-4" : "col-span-8"}>
+                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                        Reorder Level
+                    </label>
+                    <Input
+                        type="text"
+                        inputMode="numeric"
+                        value={form.reorder_level}
+                        onChange={(e) => handleNumberChange("reorder_level", e.target.value)}
+                    />
                 </div>
             </div>
         </Modal>
     );
 };
 
+
 const InventoryManager = ({ inventory, onCreate, onUpdate, onDelete, onAdjust }) => {
+    const [adjusting, setAdjusting] = useState(null);
     const [filter, setFilter] = useState("");
     const [openModal, setOpenModal] = useState(false);
     const [editing, setEditing] = useState(null);
@@ -80,7 +167,9 @@ const InventoryManager = ({ inventory, onCreate, onUpdate, onDelete, onAdjust })
                                     <Td className="text-right">
                                         <div className="flex items-center gap-1 justify-end">
                                             <Button variant="ghost" onClick={() => openEdit(i)}><Pencil className="w-4 h-4" /></Button>
-                                            <Button variant="ghost" onClick={() => onAdjust(i.id, { direction: "in", quantity: 100, reason: "restock" })}><ChevronRight className="w-4 h-4" /></Button>
+                                            <Button variant="ghost" onClick={() => setAdjusting(i)}>
+                                                <ChevronLeft className="w-4 h-4" /><ChevronRight className="w-4 h-4" />
+                                            </Button>
                                             <Button variant="ghost" className="text-red-500 hover:text-red-600" onClick={() => onDelete(i.id)}><Trash2 className="w-4 h-4" /></Button>
                                         </div>
                                     </Td>
@@ -91,6 +180,15 @@ const InventoryManager = ({ inventory, onCreate, onUpdate, onDelete, onAdjust })
                 </table>
             </div>
             <InventoryItemModal open={openModal} onClose={() => setOpenModal(false)} initial={editing} onSubmit={(payload) => { if (editing) onUpdate(editing.id, payload); else onCreate(payload); setOpenModal(false); }} />
+            {/* NEW: Adjustment modal */}
+            <InventoryAdjustModal
+                open={!!adjusting}
+                onClose={() => setAdjusting(null)}
+                item={adjusting}
+                onSubmit={(payload) => {
+                    onAdjust(adjusting.id, payload);
+                }}
+            />
         </Card>
     );
 };

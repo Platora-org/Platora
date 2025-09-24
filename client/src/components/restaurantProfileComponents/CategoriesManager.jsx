@@ -44,14 +44,14 @@ const CategoriesManager = ({ categories = [], onCreate, onUpdate, onDelete }) =>
           <Input
             placeholder="Search categories..."
             value={filter}
-            onChange={(e) => setFilter(e.target.value)}
+            onChange={(e) => setFilter(e.target.value.replace(/[^a-zA-Z\s]/g, ""))}
           />
         </div>
         <div className="flex items-center gap-2">
           <Input
             placeholder="New category name"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => setName(e.target.value.replace(/[^a-zA-Z\s]/g, ""))}
             className="md:w-72"
           />
           <Button onClick={() => name && onCreate({ name })}>
@@ -104,7 +104,7 @@ const CategoriesManager = ({ categories = [], onCreate, onUpdate, onDelete }) =>
             </div>
             <Input
               value={editName}
-              onChange={(e) => setEditName(e.target.value)}
+              onChange={(e) => setEditName(e.target.value.replace(/[^a-zA-Z\s]/g, ""))}
               placeholder="Enter category name"
               className="mb-4"
             />

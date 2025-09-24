@@ -1,6 +1,7 @@
 import express from 'express';
 import session from 'express-session';
 import passport from 'passport';
+import path from "path";
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
@@ -13,12 +14,15 @@ import auditRoutes from './routes/auditRoutes.js';
 import restaurantsListRoutes from './routes/restaurantsListRoutes.js'
 import menuListRoutes from './routes/menuListRoutes.js'
 import categoryRoutes from './routes/categoriesRoutes.js'
+import inventoryRoutes from './routes/inventoryRoutes.js'
+import menuRoutes from './routes/menuRoutes.js'
 import foodCourtRoutes from "./routes/foodCourtRoutes.js";
 import availabilityRoutes from "./routes/availabilityRoutes.js";
 import adminAvailabilityRoutes from "./routes/adminAvailabilityRoutes.js";
 import walletRoutes from './routes/walletRoutes.js';
 import cron from 'node-cron';
 import * as WalletService from './services/walletService.js';
+
 
 
 const app = express();
@@ -43,12 +47,16 @@ app.use(session({
 app.use(passport.initialize());
 configurePassport(passport);
 
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
 app.use('/api/auth', authRoutes);
 app.use('/customer/profile', customerProfileRoutes);
 app.use('/admin/profile', adminProfileRoutes);
 app.use('/restaurants/data', restaurantsListRoutes);
 app.use('/restaurants/menu', menuListRoutes);
 app.use('/restaurants/menuCategories', categoryRoutes);
+app.use('/restaurants/inventory', inventoryRoutes);
+app.use('/restaurants/menuItems', menuRoutes);
 
 app.use('/api/restaurant/kyc', kycRoutes);
 app.use('/api/audit', auditRoutes);
@@ -91,6 +99,8 @@ app.use((req, res) => {
     path: req.originalUrl
   });
 });
+
+
 
 
 app.listen(port, () => {
