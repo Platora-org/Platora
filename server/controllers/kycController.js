@@ -12,6 +12,11 @@ import {
 import { createWallet, getWalletByUserId } from "../models/walletModel.js";
 import { validateKYCData } from "../utils/validators.js";
 import { createAuditLog } from "../models/auditModel.js";
+import { 
+  sendKYCSubmittedEmail, 
+  sendKYCApprovedEmail, 
+  sendKYCRejectedEmail 
+} from "../services/emailService.js"; 
 import path from 'path';
 import fs from 'fs';
 
@@ -65,7 +70,7 @@ export const getKYCStatus = async (req, res) => {
   }
 };
 
-// Upload/Update KYC
+// Upload/Update KYC with Email Notification
 export const uploadKYC = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -122,6 +127,23 @@ export const uploadKYC = async (req, res) => {
       branch
     });
 
+    // 📧 SEND KYC SUBMISSION EMAIL
+    try {
+      // Get user data for email
+      const userData = await getKYCStatusWithUser(userId);
+      if (userData) {
+        await sendKYCSubmittedEmail(
+          userData.email,
+          userData.first_name,
+          userData.restaurant_name
+        );
+        console.log('KYC submission email sent successfully');
+      }
+    } catch (emailError) {
+      console.error('Failed to send KYC submission email:', emailError);
+      // Don't fail the main operation if email fails
+    }
+
     res.status(201).json({ 
       message: existingKYC?.status === 'REJECTED' 
         ? "KYC resubmitted successfully" 
@@ -151,7 +173,7 @@ export const fetchPendingKYCRequests = async (req, res) => {
   }
 };
 
-// Approve KYC request (admin)
+// Approve KYC request with Email Notification
 export const approveKYCRequest = async (req, res) => {
   try {
     const adminId = req.user.id;
@@ -193,6 +215,23 @@ export const approveKYCRequest = async (req, res) => {
       userAgent
     });
 
+    // 📧 SEND KYC APPROVAL EMAIL
+    try {
+      // Get updated KYC data with user info
+      const updatedKYC = await getKYCById(kycId);
+      if (updatedKYC) {
+        await sendKYCApprovedEmail(
+          updatedKYC.email,
+          updatedKYC.first_name,
+          updatedKYC.restaurant_name
+        );
+        console.log('KYC approval email sent successfully');
+      }
+    } catch (emailError) {
+      console.error('Failed to send KYC approval email:', emailError);
+      // Don't fail the main operation if email fails
+    }
+
     res.json({ 
       message: "KYC approved and wallet created successfully",
       kycId: approvedKYC.id
@@ -203,7 +242,7 @@ export const approveKYCRequest = async (req, res) => {
   }
 };
 
-// Reject KYC request with audit
+// Reject KYC request with Email Notification
 export const rejectKYCRequest = async (req, res) => {
   try {
     const adminId = req.user.id;
@@ -243,6 +282,24 @@ export const rejectKYCRequest = async (req, res) => {
       userAgent
     });
 
+    // 📧 SEND KYC REJECTION EMAIL
+    try {
+      // Get KYC data with user info
+      const kycData = await getKYCById(kycId);
+      if (kycData) {
+        await sendKYCRejectedEmail(
+          kycData.email,
+          kycData.first_name,
+          reason,
+          kycData.restaurant_name
+        );
+        console.log('KYC rejection email sent successfully');
+      }
+    } catch (emailError) {
+      console.error('Failed to send KYC rejection email:', emailError);
+      // Don't fail the main operation if email fails
+    }
+
     res.json({ 
       message: "KYC rejected successfully",
       kycId: rejectedKYC.id
@@ -259,8 +316,7 @@ export const getAllKYCRequests = async (req, res) => {
     const { status } = req.query;
     console.log("Fetching KYC requests with status:", status);
     
-    // Call the MODEL function, not the controller function
-    const kycRequests = await getAllKYCRequestsWithFilter(status); // ✅ CORRECT
+    const kycRequests = await getAllKYCRequestsWithFilter(status); 
     
     console.log(`Found ${kycRequests.length} KYC requests`);
     
@@ -279,8 +335,7 @@ export const getKYCStats = async (req, res) => {
   try {
     console.log("Fetching KYC statistics...");
     
-    // Call the MODEL function, not the controller function
-    const stats = await getKYCStatisticsFromDB(); // ✅ CORRECT
+    const stats = await getKYCStatisticsFromDB(); 
     
     console.log("Statistics fetched:", stats);
     res.json(stats);

@@ -27,15 +27,15 @@ const AdminKYCDashboard = () => {
 
   // Fetch KYC requests
   const fetchKYCRequests = async (status = null) => {
-  setLoading(true);
-  try {
-    const params = status ? `?status=${status}` : '';
-    const response = await axios.get(`/api/restaurant/kyc/all${params}`, {
-      withCredentials: true,
-    });
-    
-    setKycRequests(response.data.requests || []);
-    setError("");
+    setLoading(true);
+    try {
+      const params = status ? `?status=${status}` : '';
+      const response = await axios.get(`/api/restaurant/kyc/all${params}`, {
+        withCredentials: true,
+      });
+      
+      setKycRequests(response.data.requests || []);
+      setError("");
     } catch (error) {
       console.error("Error fetching KYC requests:", error);
       setError("Failed to fetch KYC requests");
@@ -65,8 +65,9 @@ const AdminKYCDashboard = () => {
       );
       
       setSuccessMessage("KYC approved successfully!");
-      // Remove from pending list
-      setKycRequests(prev => prev.filter(kyc => kyc.id !== kycId));
+      // Remove from pending list or refresh the current tab
+      const tab = tabs.find(t => t.id === activeTab);
+      fetchKYCRequests(tab?.status);
       
       // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(""), 3000);
@@ -94,8 +95,9 @@ const AdminKYCDashboard = () => {
       );
       
       setSuccessMessage("KYC rejected successfully!");
-      // Remove from pending list
-      setKycRequests(prev => prev.filter(kyc => kyc.id !== selectedKYC.id));
+      // Refresh the current tab
+      const tab = tabs.find(t => t.id === activeTab);
+      fetchKYCRequests(tab?.status);
       setShowRejectModal(false);
       setSelectedKYC(null);
       setRejectionReason("");
@@ -138,12 +140,34 @@ const AdminKYCDashboard = () => {
     });
   };
 
+  // Get status badge component
+  const getStatusBadge = (status) => {
+    const badges = {
+      'PENDING': (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+          Pending
+        </span>
+      ),
+      'APPROVED': (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
+          Approved
+        </span>
+      ),
+      'REJECTED': (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+          Rejected
+        </span>
+      )
+    };
+    return badges[status] || null;
+  };
+
   return (
-    
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-4 max-w-7xl">
         {/* Statistics Cards */}
         <AdminKYCStatistics />
+        
         {/* Tabs */}
         <div className="bg-white dark:bg-gray-800 rounded-t-xl shadow-lg px-6 pt-4">
           <div className="flex space-x-1 border-b border-gray-200 dark:border-gray-700">
@@ -162,6 +186,7 @@ const AdminKYCDashboard = () => {
             ))}
           </div>
         </div>
+        
         {/* Header */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 mb-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -174,13 +199,16 @@ const AdminKYCDashboard = () => {
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <div className="bg-blue-100 dark:bg-blue-900/30 px-4 py-2 rounded-lg">
-                <p className="text-sm text-blue-600 dark:text-blue-400">
+              <div className="bg-yellow-100 dark:bg-yellow-900/30 px-4 py-2 rounded-lg">
+                <p className="text-sm text-yellow-600 dark:text-yellow-400">
                   Pending: {kycRequests.filter(k => k.status === 'PENDING').length}
                 </p>
               </div>
               <button
-                onClick={fetchKYCRequests}
+                onClick={() => {
+                  const tab = tabs.find(t => t.id === activeTab);
+                  fetchKYCRequests(tab?.status);
+                }}
                 className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors"
               >
                 Refresh
@@ -264,6 +292,9 @@ const AdminKYCDashboard = () => {
                       Documents
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Submitted
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -316,17 +347,20 @@ const AdminKYCDashboard = () => {
                         <div className="flex flex-col gap-1">
                           <button
                             onClick={() => viewDocument(kyc.nic_doc, kyc.id)}
-                            className="text-xs text-blue-600 hover:text-blue-800"
+                            className="text-xs text-blue-600 hover:text-blue-800 text-left"
                           >
                             View NIC
                           </button>
                           <button
                             onClick={() => viewDocument(kyc.business_reg_doc, kyc.id)}
-                            className="text-xs text-blue-600 hover:text-blue-800"
+                            className="text-xs text-blue-600 hover:text-blue-800 text-left"
                           >
                             View Business Reg
                           </button>
                         </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getStatusBadge(kyc.status)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -335,23 +369,30 @@ const AdminKYCDashboard = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex gap-2">
-                          <button
-                            onClick={() => handleApprove(kyc.id)}
-                            disabled={processing}
-                            className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-400 text-white text-sm rounded-lg transition-colors"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => {
-                              setSelectedKYC(kyc);
-                              setShowRejectModal(true);
-                            }}
-                            disabled={processing}
-                            className="px-3 py-1 bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white text-sm rounded-lg transition-colors"
-                          >
-                            Reject
-                          </button>
+                          {/* Only show Approve/Reject buttons for PENDING status */}
+                          {kyc.status === 'PENDING' && (
+                            <>
+                              <button
+                                onClick={() => handleApprove(kyc.id)}
+                                disabled={processing}
+                                className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-400 text-white text-sm rounded-lg transition-colors"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedKYC(kyc);
+                                  setShowRejectModal(true);
+                                }}
+                                disabled={processing}
+                                className="px-3 py-1 bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white text-sm rounded-lg transition-colors"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                          
+                          {/* Always show History button */}
                           <button
                             onClick={() => {
                               setSelectedKycIdForHistory(kyc.id);
@@ -420,9 +461,10 @@ const AdminKYCDashboard = () => {
             </div>
           </div>
         )}
+        
         {showDetailModal && (
           <KYCDetailModal 
-            kycId={selectedKycIdForHistory}  // Use different state variable to avoid confusion
+            kycId={selectedKycIdForHistory}
             onClose={() => {
               setShowDetailModal(false);
               setSelectedKycIdForHistory(null);

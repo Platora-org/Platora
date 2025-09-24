@@ -26,6 +26,8 @@ const TableAvailability = lazy(() => import("../components/customerProfileCompon
 const Menu = lazy(() => import("../components/restaurantProfileComponents/RestaurantOperations"));
 const AuditLogs = lazy(() => import("../components/adminProfileComponents/AdminAuditLogs"));
 const AdminFoodCourt = lazy(() => import("../components/adminProfileComponents/AdminFoodCourt"));
+const CustomerWallet = lazy(() => import("../components/customerProfileComponents/CustomerWalletDashboard"));
+
 
 
 export const appRoutes = [
@@ -100,6 +102,10 @@ export const appRoutes = [
        {
         path: "reservations",
         component: ReservationList,
+      },
+      {
+        path: "wallet",
+        component: CustomerWallet, 
       },
      
     ]
