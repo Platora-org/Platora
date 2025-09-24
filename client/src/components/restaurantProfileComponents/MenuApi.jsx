@@ -17,15 +17,41 @@ export const api = {
   async deleteCategory(id) {
     return { ok: true, id };
   },
-  async listMenu() {
-    return [
-      { id: "m-1", name: "Chicken Curry", description: "Spicy and creamy", price: 950, image_url: "", is_active: true, category_id: "cat-1" },
-      { id: "m-2", name: "Iced Tea", description: "Refreshing", price: 350, image_url: "", is_active: true, category_id: "cat-2" },
-    ];
+  listMenu: async () => {
+    const res = await axiosInstance.get("/restaurants/menuItems");
+    return res.data;
   },
-  async createMenuItem(payload) { return { id: uuid(), ...payload }; },
-  async updateMenuItem(id, payload) { return { id, ...payload }; },
-  async deleteMenuItem(id) { return { ok: true, id }; },
+
+  createMenuItem: async (payload) => {
+    const formData = new FormData();
+    Object.keys(payload).forEach((key) => {
+      if (payload[key] !== null && payload[key] !== undefined) {
+        formData.append(key, payload[key]);
+      }
+    });
+    const res = await axiosInstance.post("/restaurants/menuItems", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data;
+  },
+
+  updateMenuItem: async (id, payload) => {
+    const formData = new FormData();
+    Object.keys(payload).forEach((key) => {
+      if (payload[key] !== null && payload[key] !== undefined) {
+        formData.append(key, payload[key]);
+      }
+    });
+    const res = await axiosInstance.put(`/restaurants/menuItems/${id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data;
+  },
+
+  deleteMenuItem: async (id) => {
+    await axiosInstance.delete(`/restaurants/menuItems/${id}`);
+    return true;
+  },
    async listInventory() {
     const res = await axiosInstance.get('/restaurants/inventory/');
     // returns array of items (as used by StoreOperations)

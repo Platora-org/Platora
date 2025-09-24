@@ -8,7 +8,9 @@ const inventoryController = {
     // GET /api/v1/inventory
     async list(req, res) {
         try {
-            const result = await Inventory.getAll();
+            const restaurantId = req.user.restaurantId;
+            
+            const result = await Inventory.getAll(restaurantId);
             return res.json(result.rows);
         } catch (err) {
             console.error(err);
@@ -19,8 +21,9 @@ const inventoryController = {
     // GET /api/v1/inventory/:id
     async getOne(req, res) {
         try {
+            const restaurantId = req.user.restaurantId;
             const { id } = req.params;
-            const result = await Inventory.getById(id);
+            const result = await Inventory.getById(id, restaurantId);
             if (result.rowCount === 0) return res.status(404).json({ message: 'Not found' });
             return res.json(result.rows[0]);
         } catch (err) {
@@ -32,6 +35,8 @@ const inventoryController = {
     // POST /api/v1/inventory
     async create(req, res) {
         try {
+            const restaurantId = req.user.restaurantId;
+        
             const { name, unit, quantity = 0, reorder_level = 0 } = req.body;
 
             if (!name || !NAME_REGEX.test(name)) {
@@ -42,7 +47,7 @@ const inventoryController = {
             }
 
             // 🔎 Check for duplicates
-            const existing = await Inventory.findByName(name.trim());
+            const existing = await Inventory.findByName(name.trim(), restaurantId);
             if (existing.rowCount > 0) {
                 return res.status(409).json({
                     success: false,
@@ -52,6 +57,7 @@ const inventoryController = {
 
             // ✅ Create new record
             const dbRes = await Inventory.create({
+                restaurant_id: restaurantId,
                 name: name.trim(),
                 unit,
                 quantity,
@@ -68,6 +74,7 @@ const inventoryController = {
     // PUT /api/v1/inventory/:id
     async update(req, res) {
         try {
+            const restaurantId = req.user.restaurantId;
             const { id } = req.params;
             const { name, unit, quantity = 0, reorder_level = 0 } = req.body;
 
@@ -79,7 +86,7 @@ const inventoryController = {
             }
 
             // 🔎 Check if another item with this name exists
-            const existing = await Inventory.findByNameExcludingId(name.trim(), id);
+            const existing = await Inventory.findByNameExcludingId(name.trim(), id, restaurantId);
             if (existing.rowCount > 0) {
                 return res.status(409).json({
                     success: false,
@@ -88,7 +95,7 @@ const inventoryController = {
             }
 
             // ✅ Update record
-            const dbRes = await Inventory.update(id, {
+            const dbRes = await Inventory.update(id, restaurantId, {
                 name: name.trim(),
                 unit,
                 quantity,
@@ -108,8 +115,9 @@ const inventoryController = {
     // DELETE /api/v1/inventory/:id
     async remove(req, res) {
         try {
+            const restaurantId = req.user.restaurantId;
             const { id } = req.params;
-            const dbRes = await Inventory.remove(id);
+            const dbRes = await Inventory.remove(id, restaurantId);
             if (dbRes.rowCount === 0) return res.status(404).json({ message: 'Not found' });
             return res.json({ message: 'Item deleted' });
         } catch (err) {
@@ -121,6 +129,7 @@ const inventoryController = {
     // PATCH /api/v1/inventory/:id/adjust
     async adjust(req, res) {
         try {
+            const restaurantId = req.user.restaurantId;
             const { id } = req.params;
             const { direction, quantity, reason = null } = req.body;
 
@@ -130,13 +139,14 @@ const inventoryController = {
             const adjustment = direction === 'in' ? Number(quantity) : -Number(quantity);
 
             // update inventory
-            const up = await Inventory.adjustQuantity(id, adjustment);
+            const up = await Inventory.adjustQuantity(id, restaurantId, adjustment);
             if (up.rowCount === 0) return res.status(404).json({ message: 'Item not found' });
 
             const updatedItem = up.rows[0];
 
             // log adjustment
             await Adjustments.create({
+                restaurant_id: restaurantId,
                 item_id: id,
                 item_name: updatedItem.name,
                 direction,
@@ -154,8 +164,9 @@ const inventoryController = {
     // GET /api/v1/inventory/:id/adjustments
     async listAdjustments(req, res) {
         try {
+            const restaurantId = req.user.restaurantId;
             const { id } = req.params;
-            const r = await Adjustments.listForItem(id);
+            const r = await Adjustments.listForItem(id, restaurantId);
             return res.json(r.rows);
         } catch (err) {
             console.error(err);

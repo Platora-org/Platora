@@ -1,39 +1,41 @@
 import { Strategy as LocalStrategy } from 'passport-local';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
-import {findUserByEmail} from '../models/userModel.js';
-import { getRestaurantById } from '../models/restaurantModel.js'; 
+import { findUserByEmail, createCustomerProfile } from '../models/userModel.js';
+import { getRestaurantById } from '../models/restaurantModel.js';
+
 import bcrypt from 'bcrypt';
 import pool from './db.js';
 
 export function configurePassport(passport) {
   // Local Strategy
 
-passport.use(new LocalStrategy({
-  usernameField: 'email'
-}, async (email, password, done) => {
-  try {
-    const user = await findUserByEmail(email);
-    if (!user) return done(null, false, { message: 'Invalid email or password.' });
+  passport.use(new LocalStrategy({
+    usernameField: 'email'
+  }, async (email, password, done) => {
+    try {
+      const user = await findUserByEmail(email);
+      if (!user) return done(null, false, { message: 'Invalid email or password.' });
 
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) return done(null, false, { message: 'Invalid email or password.' });
+      const match = await bcrypt.compare(password, user.password);
+      if (!match) return done(null, false, { message: 'Invalid email or password.' });
 
-    // If user is a restaurant, load restaurant profile data
-    if (user.role === 'restaurant') {
-      const restaurantProfile = await getRestaurantById(user.id);
-      if (restaurantProfile) {
-        // Merge restaurant profile fields into user object
-        return done(null, { ...user, restaurantProfile });
+      // If user is a restaurant, load restaurant profile data
+      if (user.role === 'restaurant') {
+        const restaurantProfile = await getRestaurantById(user.id);
+        console.log("THIS IS THE LOCALSTRATEGY RESTAURANT PROFILE =====================", restaurantProfile)
+        if (restaurantProfile) {
+          // Merge restaurant profile fields into user object
+          return done(null, { ...user, restaurantProfile });
+        }
       }
+
+      // For customers or other roles, just return user
+      return done(null, user);
+
+    } catch (err) {
+      return done(err);
     }
-
-    // For customers or other roles, just return user
-    return done(null, user);
-
-  } catch (err) {
-    return done(err);
-  }
-}));
+  }));
 
 
   // Google Strategy
@@ -44,20 +46,38 @@ passport.use(new LocalStrategy({
   }, async (accessToken, refreshToken, profile, done) => {
     try {
       const result = await pool.query("SELECT * FROM users WHERE email = $1 AND account_status != 'deleted'", [profile.emails[0].value]);
-      if (result.rows.length > 0) return done(null, result.rows[0]);
+      if (result.rows.length > 0) {
+        const existingUser = result.rows[0];
 
-      const insertRes = await pool.query(`
+        // If user is a restaurant, fetch restaurant profile and merge
+        if (existingUser.role === "restaurant") {
+          const restaurantProfile = await getRestaurantById(existingUser.id);
+
+          // Merge restaurant profile fields into the user object
+          return done(null, { ...existingUser, restaurantProfile });
+        }
+        return done(null, existingUser);
+      } 
+
+        const insertRes = await pool.query(`
         INSERT INTO users (first_name, last_name, email, provider, role, google_id)
         VALUES ($1, $2, $3, 'google', 'customer', $4)
         RETURNING *`, [
-        profile.name.givenName,
-        profile.name.familyName,
-        profile.emails[0].value,
-        profile.id
-      ]);
-      return done(null, insertRes.rows[0]);
-    } catch (err) {
-      return done(err);
-    }
-  }));
+          profile.name.givenName,
+          profile.name.familyName,
+          profile.emails[0].value,
+          profile.id
+        ]);
+
+        const user = insertRes.rows[0];
+
+        // If role is customer, create their profile
+        if (user.role === "customer") {
+          await createCustomerProfile(user.id);
+        }
+        return done(null, insertRes.rows[0]);
+      } catch (err) {
+        return done(err);
+      }
+    }));
 }
