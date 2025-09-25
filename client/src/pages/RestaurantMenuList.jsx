@@ -25,7 +25,20 @@ function MenuPage() {
   }, [id]);
 
   if (loading) return <p className="text-center py-10">Loading menu...</p>;
-  if (error) return <p className="text-center text-red-500 py-10">Error: {error}</p>;
+  if (error)
+    return <p className="text-center text-red-500 py-10">Error: {error}</p>;
+
+  const addToCart = async (menuItemId) => {
+  try {
+    // wait for backend to confirm insert
+    await axiosInstance.post("/api/carts/add", { menuItemId, quantity: 1 });
+
+    // now trigger the update event
+    window.dispatchEvent(new Event("cartUpdated"));
+  } catch (err) {
+    console.error("Failed to add item to cart:", err);
+  }
+};
 
   return (
     <section
@@ -75,11 +88,16 @@ function MenuPage() {
                   {item.description}
                 </p>
                 <p className="text-lg font-semibold text-emerald-600 dark:text-emerald-400 mb-4">
-                  ${item.price}
+                  LKR {item.price}
                 </p>
 
                 {/* Add to Cart Button */}
-                <button className="mt-auto w-full bg-emerald-500 text-white font-bold py-2 px-4 rounded-3xl flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all duration-300 transform hover:scale-105">
+                <button
+                  onClick={() => {
+                    addToCart(item.id); // call your API
+                  }}
+                  className="mt-auto w-full bg-emerald-500 text-white font-bold py-2 px-4 rounded-3xl flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all duration-300 transform hover:scale-105"
+                >
                   Add to Cart
                   <ShoppingCart size={16} />
                 </button>

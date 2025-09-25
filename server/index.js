@@ -13,6 +13,8 @@ import auditRoutes from './routes/auditRoutes.js';
 import restaurantsListRoutes from './routes/restaurantsListRoutes.js'
 import menuListRoutes from './routes/menuListRoutes.js'
 import categoryRoutes from './routes/categoriesRoutes.js'
+import plateRoutes from './routes/plateRoutes.js'
+import cartCountRoutes from "./routes/cartCountRoutes.js";
 
 const app = express();
 const port = 3000;
@@ -42,11 +44,12 @@ app.use('/admin/profile', adminProfileRoutes);
 app.use('/restaurants/data', restaurantsListRoutes);
 app.use('/restaurants/menu', menuListRoutes);
 app.use('/restaurants/menuCategories', categoryRoutes);
+app.use('/api/carts', plateRoutes);
+app.use('/api/carts/count', cartCountRoutes);
 
 app.use('/api/restaurant/kyc', kycRoutes);
 
 app.use('/api/audit', auditRoutes);
-
 
 app.listen(port, () => {
     console.log(`Server running on port ${3000}`);

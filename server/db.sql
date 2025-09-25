@@ -159,3 +159,42 @@ create table menu_items (
   is_active boolean default true,
   created_at timestamptz default now()
 );
+
+--inventory_items table
+CREATE TABLE inventory_items (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL CHECK (name ~ '^[A-Za-z0-9 ]+$'), -- no !@#$, only alphanumeric + spaces
+    unit_id INT NOT NULL REFERENCES units(id) ON DELETE RESTRICT,
+    quantity NUMERIC(12,2) NOT NULL DEFAULT 0,  -- allows fractional quantities (e.g., 0.5 kg)
+    reorder_level NUMERIC(12,2) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now()
+);
+
+--inventory_adjustments table
+CREATE TABLE inventory_adjustments (
+    id SERIAL PRIMARY KEY,
+    item_id INT NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
+    direction VARCHAR(10) NOT NULL CHECK (direction IN ('in','out')),
+    quantity NUMERIC(12,2) NOT NULL CHECK (quantity > 0),
+    reason TEXT,
+    created_at TIMESTAMP DEFAULT now()
+);
+
+--carts table
+CREATE TABLE carts (
+  id SERIAL PRIMARY KEY,
+  customer_id INTEGER REFERENCES customer_profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+--cart_items table
+CREATE TABLE cart_items (
+  id SERIAL PRIMARY KEY,
+  cart_id INTEGER NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
+  menu_item_id INTEGER NOT NULL REFERENCES menu_items(id) ON DELETE CASCADE,
+  quantity INTEGER NOT NULL CHECK (quantity > 0),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
