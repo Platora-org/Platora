@@ -1055,5 +1055,16 @@ CREATE TABLE inventory_adjustments (
     created_at TIMESTAMP DEFAULT now()
 );
 
+CREATE TABLE recipes (
+    id SERIAL PRIMARY KEY,
+    menu_item_id INT NOT NULL REFERENCES menu_items(id) ON DELETE CASCADE,
+    inventory_item_id INT NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
+    quantity_required DECIMAL(10,2) NOT NULL CHECK (quantity_required > 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (menu_item_id, inventory_item_id) -- prevent duplicate ingredient per recipe
+);
+
+
 
 
