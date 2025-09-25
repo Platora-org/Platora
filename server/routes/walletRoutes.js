@@ -56,7 +56,9 @@ import {
   getDashboardAnalytics,
   getTransactionTrends,
   exportTransactions,
-  getCustomerSpendingAnalytics
+  getCustomerSpendingAnalytics,
+  generateTransactionInvoice,
+  generateMonthlyStatement
 } from '../controllers/analyticsController.js';
 import verifyJWT from "../middleware/verifyToken.js";
 import checkRole from "../middleware/requireRole.js";
@@ -453,5 +455,9 @@ router.get('/analytics/dashboard', verifyJWT, getDashboardAnalytics);
 router.get('/analytics/trends', verifyJWT, getTransactionTrends);
 router.get('/analytics/customers', verifyJWT, getCustomerSpendingAnalytics);
 router.get('/analytics/export', verifyJWT, exportTransactions);
+
+// PDF generation routes
+router.get('/invoice/:transactionId', verifyJWT, generateTransactionInvoice);
+router.get('/statement/monthly', verifyJWT, generateMonthlyStatement);
 
 export default router;

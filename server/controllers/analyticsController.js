@@ -1,7 +1,6 @@
 import * as AnalyticsModel from '../models/analyticsModel.js';
 import { Parser } from 'json2csv';
 import puppeteer from 'puppeteer';
-import path from 'path';
 
 // Get dashboard analytics
 export const getDashboardAnalytics = async (req, res) => {
@@ -159,32 +158,15 @@ export const generateTransactionInvoice = async (req, res) => {
     const { transactionId } = req.params;
     const userId = req.user.id;
     
-    // Get transaction details
-    const transactionQuery = await pool.query(
-      `SELECT 
-        t.*,
-        u.first_name || ' ' || u.last_name as customer_name,
-        u.email,
-        CASE 
-          WHEN t.metadata->>'restaurant_id' IS NOT NULL 
-          THEN rp.name 
-          ELSE NULL 
-        END as restaurant_name
-      FROM transactions t
-      JOIN users u ON t.user_id = u.id
-      LEFT JOIN restaurant_profiles rp ON (t.metadata->>'restaurant_id')::int = rp.id
-      WHERE t.id = $1 AND t.user_id = $2`,
-      [transactionId, userId]
-    );
+    // Use model instead of direct query
+    const transaction = await AnalyticsModel.getTransactionForInvoice(transactionId, userId);
     
-    if (transactionQuery.rows.length === 0) {
+    if (!transaction) {
       return res.status(404).json({
         success: false,
         message: 'Transaction not found'
       });
     }
-    
-    const transaction = transactionQuery.rows[0];
     
     // Generate HTML for PDF
     const html = `
@@ -299,25 +281,9 @@ export const generateMonthlyStatement = async (req, res) => {
     const currentMonth = month || new Date().getMonth() + 1;
     const currentYear = year || new Date().getFullYear();
     
-    // Get user info
-    const userQuery = await pool.query(
-      'SELECT first_name, last_name, email FROM users WHERE id = $1',
-      [userId]
-    );
-    const user = userQuery.rows[0];
-    
-    // Get transactions for the month
-    const transactionsQuery = await pool.query(
-      `SELECT * FROM transactions 
-       WHERE user_id = $1 
-         AND EXTRACT(MONTH FROM created_at) = $2 
-         AND EXTRACT(YEAR FROM created_at) = $3 
-         AND status = 'COMPLETED'
-       ORDER BY created_at DESC`,
-      [userId, currentMonth, currentYear]
-    );
-    
-    const transactions = transactionsQuery.rows;
+    // Use models instead of direct queries
+    const user = await AnalyticsModel.getUserInfo(userId);
+    const transactions = await AnalyticsModel.getUserMonthlyTransactions(userId, currentMonth, currentYear);
     
     const html = `
       <!DOCTYPE html>
@@ -399,7 +365,8 @@ export const generateMonthlyStatement = async (req, res) => {
     console.error('Error generating statement:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to generate statement'
+      message: 'Failed to generate statement',
+      error: error.message
     });
   }
 };

@@ -188,3 +188,52 @@ export const getTransactionExportData = async (filters = {}) => {
   const result = await pool.query(query, params);
   return result.rows;
 };
+
+// Get transaction details for PDF generation
+export const getTransactionForInvoice = async (transactionId, userId) => {
+  const query = `
+    SELECT 
+      t.*,
+      u.first_name || ' ' || u.last_name as customer_name,
+      u.email,
+      CASE 
+        WHEN t.metadata->>'restaurant_id' IS NOT NULL 
+        THEN rp.name 
+        ELSE NULL 
+      END as restaurant_name
+    FROM transactions t
+    JOIN users u ON t.user_id = u.id
+    LEFT JOIN restaurant_profiles rp ON (t.metadata->>'restaurant_id')::int = rp.id
+    WHERE t.id = $1 AND t.user_id = $2
+  `;
+  
+  const result = await pool.query(query, [transactionId, userId]);
+  return result.rows[0];
+};
+
+// Get user monthly transactions
+export const getUserMonthlyTransactions = async (userId, month, year) => {
+  const query = `
+    SELECT * FROM transactions 
+    WHERE user_id = $1 
+      AND EXTRACT(MONTH FROM created_at) = $2 
+      AND EXTRACT(YEAR FROM created_at) = $3 
+      AND status = 'COMPLETED'
+    ORDER BY created_at DESC
+  `;
+  
+  const result = await pool.query(query, [userId, month, year]);
+  return result.rows;
+};
+
+// Get user info
+export const getUserInfo = async (userId) => {
+  const query = `
+    SELECT first_name, last_name, email 
+    FROM users 
+    WHERE id = $1
+  `;
+  
+  const result = await pool.query(query, [userId]);
+  return result.rows[0];
+};
