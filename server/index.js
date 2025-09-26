@@ -14,6 +14,8 @@ import auditRoutes from './routes/auditRoutes.js';
 import restaurantsListRoutes from './routes/restaurantsListRoutes.js'
 import menuListRoutes from './routes/menuListRoutes.js'
 import categoryRoutes from './routes/categoriesRoutes.js'
+import plateRoutes from './routes/plateRoutes.js'
+import cartCountRoutes from "./routes/cartCountRoutes.js";
 import inventoryRoutes from './routes/inventoryRoutes.js'
 import menuRoutes from './routes/menuRoutes.js'
 import foodCourtRoutes from "./routes/foodCourtRoutes.js";
@@ -22,7 +24,6 @@ import adminAvailabilityRoutes from "./routes/adminAvailabilityRoutes.js";
 import walletRoutes from './routes/walletRoutes.js';
 import cron from 'node-cron';
 import * as WalletService from './services/walletService.js';
-
 
 
 const app = express();
@@ -55,8 +56,13 @@ app.use('/admin/profile', adminProfileRoutes);
 app.use('/restaurants/data', restaurantsListRoutes);
 app.use('/restaurants/menu', menuListRoutes);
 app.use('/restaurants/menuCategories', categoryRoutes);
+
+app.use('/api/carts', plateRoutes);
+app.use('/api/carts/count', cartCountRoutes);
+
 app.use('/restaurants/inventory', inventoryRoutes);
 app.use('/restaurants/menuItems', menuRoutes);
+
 
 app.use('/api/restaurant/kyc', kycRoutes);
 app.use('/api/audit', auditRoutes);
@@ -99,6 +105,7 @@ app.use((req, res) => {
     path: req.originalUrl
   });
 });
+
 
 
 
