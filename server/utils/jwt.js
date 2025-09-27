@@ -7,7 +7,7 @@ export const generateToken = (user) => {
   const lastName = user.restaurantProfile?.lastName || user.last_name || '';
   const email = user.restaurantProfile?.email || user.email || '';
   const role = user.role || (user.restaurantProfile?.role || '');
-  const restaurantName = user.restaurantProfile?.restaurantName || user.restaurant_name || '';
+  const restaurantName = user.restaurantProfile?.restaurant_name|| user.restaurantProfile?.restaurantName || user.restaurant_name || '';
   const restaurantId = user.restaurantProfile?.restaurantId || user.restaurant_id || '';
 
 
@@ -20,12 +20,14 @@ export const generateToken = (user) => {
     email,
   };
 
-  if (role === 'restaurant' && user.restaurantProfile?.restaurantName) {
+  if (role === 'restaurant' ) {
     payload.restaurantName = restaurantName;
     payload.restaurantId = restaurantId;
   }
 
   return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '3h' });
+  
+  
 };
 
 

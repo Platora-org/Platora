@@ -115,7 +115,25 @@ const AdminProfileSideBar = ({ onLogout, loggedUser }) => {
         { label: "Audit Logs", href: "/admin/auditlogs" },
       ], 
     },
+    {
+  type: "dropdown",
+  label: "Reservations",
+  icon: (
+    // calendar / table-ish icon (simple)
+    <svg className="w-5 h-5 opacity-75" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M8 2v4M16 2v4M3 10h18" />
+    </svg>
+  ),
+  children: [
+    { label: "Food Court ", href: "/admin/reservations/food-court" },
+    { label: "Reservation List", href: "/admin/reservations/list" },
+  ],
+},
+
   ];
+
+  
 
   const isActiveLink = (href) => {
     if (href === '/admin/') {

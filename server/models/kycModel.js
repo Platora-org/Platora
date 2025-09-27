@@ -47,9 +47,11 @@ export const getKYCStatusWithUser = async (userId) => {
        k.*,
        u.first_name,
        u.last_name,
-       u.email
+       u.email,
+       rp.restaurant_name
      FROM users u
      LEFT JOIN kyc_requests k ON k.restaurant_id = u.id
+     LEFT JOIN restaurant_profiles rp ON rp.user_id = u.id
      WHERE u.id = $1`,
     [userId]
   );
@@ -64,19 +66,31 @@ export const getPendingKYCRequests = async () => {
        u.first_name,
        u.last_name,
        u.email,
-       u.phone
+       u.phone,
+       rp.restaurant_name
      FROM kyc_requests k
      JOIN users u ON k.restaurant_id = u.id
+     LEFT JOIN restaurant_profiles rp ON rp.user_id = u.id
      WHERE k.status = 'PENDING'
      ORDER BY k.created_at ASC`
   );
   return result.rows;
 };
 
-// Get KYC by ID
+// Get KYC by ID - FIXED: Now includes user data with email and restaurant name
 export const getKYCById = async (kycId) => {
   const result = await pool.query(
-    `SELECT * FROM kyc_requests WHERE id = $1`,
+    `SELECT 
+       k.*,
+       u.first_name,
+       u.last_name,
+       u.email,
+       u.phone,
+       rp.restaurant_name
+     FROM kyc_requests k
+     JOIN users u ON k.restaurant_id = u.id
+     LEFT JOIN restaurant_profiles rp ON rp.user_id = u.id
+     WHERE k.id = $1`,
     [kycId]
   );
   return result.rows[0];
@@ -120,10 +134,12 @@ export const getAllKYCRequests = async (status = null) => {
       u.last_name,
       u.email,
       u.phone,
+      rp.restaurant_name,
       reviewer.first_name as reviewer_first_name,
       reviewer.last_name as reviewer_last_name
     FROM kyc_requests k
     JOIN users u ON k.restaurant_id = u.id
+    LEFT JOIN restaurant_profiles rp ON rp.user_id = u.id
     LEFT JOIN users reviewer ON k.reviewed_by = reviewer.id
   `;
   
@@ -182,10 +198,12 @@ export const getAllKYCRequestsWithFilter = async (status = null) => {
       u.last_name,
       u.email,
       u.phone,
+      rp.restaurant_name,
       reviewer.first_name as reviewer_first_name,
       reviewer.last_name as reviewer_last_name
     FROM kyc_requests k
     JOIN users u ON k.restaurant_id = u.id
+    LEFT JOIN restaurant_profiles rp ON rp.user_id = u.id
     LEFT JOIN users reviewer ON k.reviewed_by = reviewer.id
   `;
   

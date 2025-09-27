@@ -1,3 +1,5 @@
+import axiosInstance from '../../utils/axiosInstance';
+
 export const api = {
   async listCategories() {
     return [
@@ -15,27 +17,62 @@ export const api = {
   async deleteCategory(id) {
     return { ok: true, id };
   },
-  async listMenu() {
-    return [
-      { id: "m-1", name: "Chicken Curry", description: "Spicy and creamy", price: 950, image_url: "", is_active: true, category_id: "cat-1" },
-      { id: "m-2", name: "Iced Tea", description: "Refreshing", price: 350, image_url: "", is_active: true, category_id: "cat-2" },
-    ];
+  listMenu: async () => {
+    const res = await axiosInstance.get("/restaurants/menuItems");
+    return res.data;
   },
-  async createMenuItem(payload) { return { id: uuid(), ...payload }; },
-  async updateMenuItem(id, payload) { return { id, ...payload }; },
-  async deleteMenuItem(id) { return { ok: true, id }; },
-  async listInventory() {
-    return [
-      { id: "i-1", name: "Chicken", unit: "g", quantity: 1800, reorder_level: 2000 },
-      { id: "i-2", name: "Rice", unit: "g", quantity: 10000, reorder_level: 5000 },
-      { id: "i-3", name: "Curry Paste", unit: "g", quantity: 800, reorder_level: 1000 },
-      { id: "i-4", name: "Tea Leaves", unit: "g", quantity: 300, reorder_level: 400 },
-    ];
+
+  createMenuItem: async (payload) => {
+    const formData = new FormData();
+    Object.keys(payload).forEach((key) => {
+      if (payload[key] !== null && payload[key] !== undefined) {
+        formData.append(key, payload[key]);
+      }
+    });
+    const res = await axiosInstance.post("/restaurants/menuItems", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data;
   },
-  async createInventoryItem(payload) { return { id: uuid(), ...payload }; },
-  async updateInventoryItem(id, payload) { return { id, ...payload }; },
-  async deleteInventoryItem(id) { return { ok: true, id }; },
-  async adjustInventory(id, { direction, quantity, reason }) { return { id, direction, quantity, reason }; },
+
+  updateMenuItem: async (id, payload) => {
+    const formData = new FormData();
+    Object.keys(payload).forEach((key) => {
+      if (payload[key] !== null && payload[key] !== undefined) {
+        formData.append(key, payload[key]);
+      }
+    });
+    const res = await axiosInstance.put(`/restaurants/menuItems/${id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data;
+  },
+
+  deleteMenuItem: async (id) => {
+    await axiosInstance.delete(`/restaurants/menuItems/${id}`);
+    return true;
+  },
+   async listInventory() {
+    const res = await axiosInstance.get('/restaurants/inventory/');
+    // returns array of items (as used by StoreOperations)
+    return res.data;
+  },
+  async createInventoryItem(payload) {
+    // payload shape from InventoryItemModal: { name, unit, quantity, reorder_level }
+    const res = await axiosInstance.post('/restaurants/inventory/', payload);
+    return res.data;
+  },
+  async updateInventoryItem(id, payload) {
+    const res = await axiosInstance.put(`/restaurants/inventory/${id}`, payload);
+    return res.data;
+  },
+   async deleteInventoryItem(id) {
+    return axiosInstance.delete(`/restaurants/inventory/${id}`);
+  },
+  async adjustInventory(id, payload) {
+    // payload: { direction: 'in'|'out', quantity, reason? }
+    return axiosInstance.patch(`/restaurants/inventory/${id}/adjust`, payload);
+  },
   async listRecipe(menuItemId) {
     if (menuItemId === "m-1") {
       return [

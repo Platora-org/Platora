@@ -27,6 +27,27 @@ export const Toolbar = ({ children }) => (
   </div>
 );
 
+export const NotificationBadge = ({ count }) => {
+  if (!count || count <= 0) return null;
+
+  const displayCount = count > 99 ? "99+" : count;
+
+  return (
+    <motion.span
+      initial={{ scale: 0 }}
+      animate={{ scale: 1 }}
+      exit={{ scale: 0 }}
+      transition={{ type: "spring", stiffness: 400, damping: 20 }}
+      className="absolute -top-1.5 -right-1.5 flex items-center justify-center 
+                 min-w-[18px] h-[18px] px-1.5 text-[11px] font-semibold
+                 text-white bg-red-600 rounded-full shadow-md"
+    >
+      {displayCount}
+    </motion.span>
+  );
+};
+
+
 export const Button = ({ variant = "primary", className, children, ...props }) => {
   const base = "inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-2";
   

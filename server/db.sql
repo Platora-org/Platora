@@ -163,9 +163,8 @@ create table menu_items (
 --inventory_items table
 CREATE TABLE inventory_items (
     id SERIAL PRIMARY KEY,
-    restaurant_id integer not null references restaurant_profiles(id) on delete cascade,
     name VARCHAR(100) NOT NULL CHECK (name ~ '^[A-Za-z0-9 ]+$'), -- no !@#$, only alphanumeric + spaces
-    unit TEXT NOT NULL,
+    unit_id INT NOT NULL REFERENCES units(id) ON DELETE RESTRICT,
     quantity NUMERIC(12,2) NOT NULL DEFAULT 0,  -- allows fractional quantities (e.g., 0.5 kg)
     reorder_level NUMERIC(12,2) NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT now(),
@@ -175,9 +174,7 @@ CREATE TABLE inventory_items (
 --inventory_adjustments table
 CREATE TABLE inventory_adjustments (
     id SERIAL PRIMARY KEY,
-    restaurant_id integer not null references restaurant_profiles(id) on delete cascade,
-    item_id INT REFERENCES inventory_items(id) ON DELETE SET NULL,
-    item_name VARCHAR(100),
+    item_id INT NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
     direction VARCHAR(10) NOT NULL CHECK (direction IN ('in','out')),
     quantity NUMERIC(12,2) NOT NULL CHECK (quantity > 0),
     reason TEXT,
@@ -200,45 +197,4 @@ CREATE TABLE cart_items (
   quantity INTEGER NOT NULL CHECK (quantity > 0),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
---recipe table
-CREATE TABLE recipes (
-    id SERIAL PRIMARY KEY,
-    menu_item_id INT NOT NULL REFERENCES menu_items(id) ON DELETE CASCADE,
-    inventory_item_id INT NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
-    quantity_required DECIMAL(10,2) NOT NULL CHECK (quantity_required > 0),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (menu_item_id, inventory_item_id) -- prevent duplicate ingredient per recipe
-);
-
---orders table
-CREATE TABLE orders (
-  id SERIAL PRIMARY KEY,
-  customer_id INTEGER REFERENCES customer_profiles(id) ON DELETE CASCADE,
-  cart_id INTEGER REFERENCES carts(id) ON DELETE SET NULL,
-  status VARCHAR(20) DEFAULT 'pending', -- pending, completed, cancelled
-  total_amount NUMERIC(10,2) NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
---restaurant_orders table
-CREATE TABLE restaurant_orders (
-  id SERIAL PRIMARY KEY,
-  order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
-  restaurant_id INTEGER REFERENCES restaurant_profiles(id) ON DELETE CASCADE,
-  status VARCHAR(20) DEFAULT 'pending', -- pending, accepted, denied, preparing, ready, delivered
-  subtotal NUMERIC(10,2) NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
---order_items table
-CREATE TABLE order_items (
-  id SERIAL PRIMARY KEY,
-  restaurant_order_id INTEGER REFERENCES restaurant_orders(id) ON DELETE CASCADE,
-  menu_item_id INTEGER REFERENCES menu_items(id) ON DELETE CASCADE,
-  quantity INTEGER NOT NULL CHECK (quantity > 0),
-  price NUMERIC(10,2) NOT NULL, -- store price at the time of order
-  created_at TIMESTAMPTZ DEFAULT NOW()
 );

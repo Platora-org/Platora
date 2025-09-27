@@ -460,7 +460,7 @@ const RestaurantWallet = () => {
         if (response.data.user) {
           setFirstName(response.data.user.first_name);
           setLastName(response.data.user.last_name);
-          setRestaurantName("response.data.user.restaurant_name (Dummy Check)"); // Assuming restaurant_name is part of user data
+          setRestaurantName(response.data.user.restaurant_name); 
           setEmail(response.data.user.email || "");
         }
         
