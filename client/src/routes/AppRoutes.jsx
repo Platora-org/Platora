@@ -27,7 +27,8 @@ const Menu = lazy(() => import("../components/restaurantProfileComponents/Restau
 const AuditLogs = lazy(() => import("../components/adminProfileComponents/AdminAuditLogs"));
 const AdminFoodCourt = lazy(() => import("../components/adminProfileComponents/AdminFoodCourt"));
 const CustomerWallet = lazy(() => import("../components/customerProfileComponents/CustomerWalletDashboard"));
-
+const Plate = lazy(() => import("../pages/Plate"));
+const CustomerOrders = lazy(() => import("../components/customerProfileComponents/CustomerOrders"))
 
 
 export const appRoutes = [
@@ -36,6 +37,13 @@ export const appRoutes = [
     component: LoginPage,
     requiresAuth: false,
     hideHeader: true
+  },
+   
+  {
+    path: "/plate",
+    component: Plate,
+    requiresAuth: true,
+    allowedRoles: ["customer", "guest"],
   },
   {
     path: "/restaurants",
@@ -90,6 +98,10 @@ export const appRoutes = [
       {
         path: "analysis",
         component: Analysis,
+      },
+      {
+        path: "orders",
+        component: CustomerOrders,
       },
       {
         path: "settings",

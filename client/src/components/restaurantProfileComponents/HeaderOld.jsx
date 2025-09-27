@@ -3,7 +3,6 @@ import { Menu, X, Utensils, ShoppingCart } from 'lucide-react';
 import { Link } from "react-router-dom";
 import ProfileButton from "./ProfileButton";
 import { useAuth } from "../utils/AuthContext";
-import axiosInstance from "../utils/axiosInstance"; 
 
 // Navigation configuration for different user roles
 const navigationConfig = {
@@ -35,8 +34,12 @@ const navigationConfig = {
 
 const Header = ({ isMenuOpen, setIsMenuOpen }) => {
   const [scrolled, setScrolled] = useState(false);
-  const [cartItems, setCartItems] = useState(0); // cart count
+  const [cartItems, setCartItems] = useState(0); // Default 0 items
   const { logout, user } = useAuth();
+
+  // Dummy functions to test cart count (optional)
+  const increaseCart = () => setCartItems(prev => prev + 1);
+  const decreaseCart = () => setCartItems(prev => (prev > 0 ? prev - 1 : 0));
 
   // Determine user role
   const getUserRole = () => {
@@ -50,37 +53,15 @@ const Header = ({ isMenuOpen, setIsMenuOpen }) => {
   const currentUserRole = getUserRole();
   const currentConfig = navigationConfig[currentUserRole];
 
-  // Fetch cart count from backend
-  const fetchCartCount = async () => {
-    try {
-      const res = await axiosInstance.get("/api/carts/count");
-      // Adjust based on backend response
-      setCartItems(res.data.count || res.data.totalItems || 0);
-    } catch (err) {
-      console.error("Failed to fetch cart count:", err);
-    }
-  };
-
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
-
-    // Initial fetch
-    fetchCartCount();
-
-    // Listen for cartUpdated event
-    const handleCartUpdate = () => fetchCartCount();
-    window.addEventListener("cartUpdated", handleCartUpdate);
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener("cartUpdated", handleCartUpdate);
-    };
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   // Render navigation items
   const renderNavItems = (isMobile = false) => {
-    return currentConfig.nav?.map(({ label, path, icon: Icon }, i) => (
+    return currentConfig.nav.map(({ label, path, icon: Icon }, i) => (
       <Link
         key={i}
         to={path}
@@ -100,8 +81,9 @@ const Header = ({ isMenuOpen, setIsMenuOpen }) => {
   // Render CTA buttons for unregistered users
   const renderCTA = (isMobile = false) => {
     if (currentUserRole !== 'unregistered') return null;
-    const { primary, secondary } = currentConfig.cta;
 
+    const { primary, secondary } = currentConfig.cta;
+    
     if (isMobile) {
       return (
         <>
@@ -171,11 +153,9 @@ const Header = ({ isMenuOpen, setIsMenuOpen }) => {
               className="relative text-gray-700 dark:text-gray-300 hover:text-emerald-500 dark:hover:text-emerald-400 transition"
             >
               <ShoppingCart className="w-6 h-6" />
-              {cartItems > 0 && (
-                <span className="absolute -top-2 -right-2 bg-emerald-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
-                  {cartItems}
-                </span>
-              )}
+              <span className="absolute -top-2 -right-2 bg-emerald-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                {cartItems}
+              </span>
             </Link>
           )}
 
@@ -220,15 +200,15 @@ const Header = ({ isMenuOpen, setIsMenuOpen }) => {
             >
               <ShoppingCart className="w-5 h-5" />
               <span>Cart</span>
-              {cartItems > 0 && (
-                <span className="absolute -top-2 -right-0.5 bg-emerald-500 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">
-                  {cartItems} 
-                </span>
-              )}
+              <span className="absolute -top-2 -right-0.5 bg-emerald-500 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">
+                {cartItems}
+              </span>
             </Link>
           </nav>
         </div>
       )}
+
+      
     </header>
   );
 };

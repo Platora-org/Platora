@@ -52,6 +52,14 @@ import {
   getPayoutHistory,
   getPlatformRevenueAnalytics
 } from '../controllers/adminPayoutController.js';
+import {
+  getDashboardAnalytics,
+  getTransactionTrends,
+  exportTransactions,
+  getCustomerSpendingAnalytics,
+  generateTransactionInvoice,
+  generateMonthlyStatement
+} from '../controllers/analyticsController.js';
 import verifyJWT from "../middleware/verifyToken.js";
 import checkRole from "../middleware/requireRole.js";
 
@@ -441,5 +449,15 @@ router.get('/admin/pending-payouts', verifyJWT, checkRole(['admin']), getAdminPe
 router.post('/admin/process-payout', verifyJWT, checkRole(['admin']), processRestaurantPayout);
 router.get('/admin/payout-history', verifyJWT, checkRole(['admin']), getPayoutHistory);
 router.get('/admin/platform-revenue', verifyJWT, checkRole(['admin']), getPlatformRevenueAnalytics);
+
+// Analytics routes
+router.get('/analytics/dashboard', verifyJWT, getDashboardAnalytics);
+router.get('/analytics/trends', verifyJWT, getTransactionTrends);
+router.get('/analytics/customers', verifyJWT, getCustomerSpendingAnalytics);
+router.get('/analytics/export', verifyJWT, exportTransactions);
+
+// PDF generation routes
+router.get('/invoice/:transactionId', verifyJWT, generateTransactionInvoice);
+router.get('/statement/monthly', verifyJWT, generateMonthlyStatement);
 
 export default router;

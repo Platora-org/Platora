@@ -1,5 +1,6 @@
 import pool from "../config/db.js";
 
+
 // Get all categories for a restaurant
 export async function getAll(restaurantId) {
   return pool.query(
