@@ -52,18 +52,26 @@ const RecipeBuilder = ({ menu, inventory, onSave }) => {
   };
 
   const loadExisting = async (id) => {
-    if (!id) return setRows([]);
-    setLoading(true);
-    try {
-      const existing = await api.listRecipe(id);
-      setRows(existing || []);
-    } catch (error) {
-      console.error("Failed to load recipe:", error);
-      setRows([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (!id) return setRows([]);
+  setLoading(true);
+  try {
+    const existing = await api.listRecipe(id);
+    // Normalize rows so they match what the UI expects
+    const mapped = existing.map(r => ({
+      inventory_id: String(r.inventory_item_id), // keep consistent with Select value
+      quantity: String(r.quantity_required),
+      name: r.name, // optional: might not be needed since you lookup inventory[]
+      unit: r.unit  // optional: same as above
+    }));
+    setRows(mapped);
+  } catch (error) {
+    console.error("Failed to load recipe:", error);
+    setRows([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
     loadExisting(selectedMenuId);
@@ -102,7 +110,6 @@ const RecipeBuilder = ({ menu, inventory, onSave }) => {
           </Select>
         </div>
         <div className="md:col-span-2 flex items-end justify-end">
-          {/* ✨ CHANGE: Use the new 'isAddDisabled' variable */}
           <Button onClick={addRow} disabled={isAddDisabled}>
             <Plus className="w-4 h-4" /> Add Ingredient
           </Button>
