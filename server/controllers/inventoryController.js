@@ -201,7 +201,7 @@ async exportAdjustments(req, res) {
         doc.pipe(res);
 
         // Main title
-        doc.fontSize(20).font('Helvetica-Bold').text("Inventory Account", { align: "center" });
+        doc.fontSize(20).font('Helvetica-Bold').text("Inventory Accounts", { align: "center" });
         doc.moveDown(2);
 
         // Group adjustments by item

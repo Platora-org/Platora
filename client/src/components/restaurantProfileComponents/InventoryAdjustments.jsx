@@ -30,7 +30,7 @@ const InventoryAdjustments = () => {
 
   return (
     <Card className="p-6">
-      <h2 className="text-lg font-semibold mb-4">Inventory Adjustments</h2>
+      <h2 className="text-lg font-semibold -mb-9">Inventory Adjustments</h2>
       {loading ? (
         <div>Loading...</div>
       ) : (
