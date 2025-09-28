@@ -1,111 +1,76 @@
+// src/pages/reservations/TableAvailability.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
+import axiosInstance from "../../utils/axiosInstance";
 
-// ----- axios instance -----
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000",
-  withCredentials: true,
-});
-
-//table sizes
 const TABLE_W = 150;
 const TABLE_H = 60;
 
-// ----- local fallback + defaults -----
 const DEFAULT_TABLES = [
-  { id: "T-1", capacity: 2, price: 10, x: 60, y: 70 },
-  { id: "T-2", capacity: 2, price: 10, x: 220, y: 80 },
-  { id: "T-3", capacity: 4, price: 15, x: 380, y: 70 },
-  { id: "T-4", capacity: 4, price: 15, x: 540, y: 80 },
-  { id: "T-5", capacity: 6, price: 20, x: 120, y: 220 },
-  { id: "T-6", capacity: 6, price: 20, x: 320, y: 220 },
-  { id: "T-7", capacity: 4, price: 15, x: 520, y: 220 },
-  { id: "T-8", capacity: 2, price: 10, x: 200, y: 360 },
-  { id: "T-9", capacity: 4, price: 15, x: 380, y: 360 },
+  { id: 1, table_code: "T-1", capacity: 2, price: 10, x: 60,  y: 70 },
+  { id: 2, table_code: "T-2", capacity: 2, price: 10, x: 220, y: 80 },
+  { id: 3, table_code: "T-3", capacity: 4, price: 15, x: 380, y: 70 },
 ];
 
-// demo occupied (replace with backend later)
-const MOCK_OCCUPIED = [
-  { tableId: "T-6", date: "2025-08-27", time: "4:00 PM - 6:00 PM" },
-  { tableId: "T-3", date: "2025-08-27", time: "4:00 PM - 6:00 PM" },
-  { tableId: "T-9", date: "2025-08-29", time: "8:00 PM - 10:00 PM" },
-];
-
-// localStorage mirror (so customer still sees something if API is down)
 const LS_LAYOUT_KEY = "platora_table_layout_v1";
 const loadLayout = () => {
-  try {
-    const raw = localStorage.getItem(LS_LAYOUT_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
+  try { const raw = localStorage.getItem(LS_LAYOUT_KEY); return raw ? JSON.parse(raw) : null; }
+  catch { return null; }
 };
-const saveLayout = (tables) => {
-  try {
-    localStorage.setItem(LS_LAYOUT_KEY, JSON.stringify(tables));
-  } catch {}
-};
+const saveLayout = (tables) => { try { localStorage.setItem(LS_LAYOUT_KEY, JSON.stringify(tables)); } catch {} };
 
-// ====== SQUARE table UI ======
 const TableNode = ({ table, occupied, selected, selectable, onSelect }) => {
-  const base =
-    "rounded-md text-sm font-medium shadow-sm select-none flex flex-col items-center justify-center";
+  const base = "rounded-md text-sm font-medium shadow-sm select-none flex flex-col items-center justify-center";
   const colors = occupied
-    ?  "bg-rose-600 text-white dark:bg-rose-700 cursor-not-allowed"
+    ? "bg-rose-600 text-white cursor-not-allowed"
     : selected
     ? "bg-emerald-500 text-white"
     : selectable
-    ? "bg-gray-900 text-white hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 cursor-pointer"
-    : "bg-gray-300 text-gray-600 dark:bg-gray-600 dark:text-gray-300 cursor-not-allowed";
+    ? "bg-gray-900 text-white hover:bg-gray-700 cursor-pointer"
+    : "bg-gray-300 text-gray-600 cursor-not-allowed";
 
   return (
     <div
-      onClick={() => {
-        if (selectable && !occupied) onSelect?.(table.id);
-      }}
       className={`${base} ${colors}`}
       style={{ width: TABLE_W, height: TABLE_H, textAlign: "center" }}
       title={
         occupied
           ? "Occupied"
-          : `Table ${table.table_code || table.id} • ${table.capacity} people • $${table.price}`
+          : `${table.table_code} • ${table.capacity} people • ${table.price} coins` 
       }
+      onClick={() => !occupied && selectable && onSelect?.(table.id)}
     >
-      <div className="text-xs opacity-80">
-        {table.table_code || `Table ${table.id}`}
-      </div>
-      <div className="text-[11px] opacity-70">
-        {table.capacity} people · ${table.price}
-      </div>
+      <div className="text-xs opacity-80">{table.table_code}</div>
+      <div className="text-[11px] opacity-70">{table.capacity} people · {table.price} Coins</div>
     </div>
   );
 };
 
 export default function TableAvailability() {
-  const { state } = useLocation();
+  const { state } = useLocation(); // expects { date, time, guests }
   const navigate = useNavigate();
 
-  // from ReservationPage
-  const date = state?.date || "";
-  const time = state?.time || "";
+  const date   = state?.date || "";
+  const time   = state?.time || "";        // label (e.g. "6:00 PM – 8:00 PM")
   const guests = Number(state?.guests || 0);
 
-  // fetch the admin layout for customers
   const [tables, setTables] = useState(DEFAULT_TABLES);
   const [loading, setLoading] = useState(true);
 
-  // load layout from backend (mirror admin)
+  const [slotId, setSlotId] = useState(null);
+  const [occupiedIds, setOccupiedIds] = useState([]);
+
+  // fetch tables layout
   useEffect(() => {
     let mounted = true;
     (async () => {
       setLoading(true);
       try {
-        const res = await api.get("/api/food-court/tables");
+        const res = await axiosInstance.get("/api/food-court/tables");
         if (!mounted) return;
         const normalized = (res.data?.tables || []).map((t) => ({
-          id: t.id,
+          id: Number(t.id),
+          table_code: t.table_code,
           capacity: t.capacity,
           price: t.price,
           x: Number(t.pos_x ?? 40),
@@ -125,44 +90,67 @@ export default function TableAvailability() {
         if (mounted) setLoading(false);
       }
     })();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
 
-  // Occupied by date/time
-  const occupiedSet = useMemo(() => {
-    return new Set(
-      MOCK_OCCUPIED.filter((r) => r.date === date && r.time === time).map(
-        (r) => r.tableId
-      )
-    );
-  }, [date, time]);
+  // look up slot_id from label
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { data } = await axiosInstance.get("/api/reservations/time-slots");
+        const slots = data?.slots || [];
 
-  // selection
-  const [selected, setSelected] = useState([]); // up to 2
-  const toggleSelect = (tableId) => {
+        // normalize like the backend fuzzy matcher
+        const norm = (s) => s.toLowerCase().replaceAll("–","-").replaceAll(" ","");
+
+        const found = slots.find(s => norm(s.label) === norm(time));
+        if (found) setSlotId(found.id);
+        else setSlotId(null);
+      } catch {
+        setSlotId(null);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [time]);
+
+  // fetch occupied table IDs for this date/slot
+  useEffect(() => {
+    if (!date || !slotId) return;
+    let cancel = false;
+
+    (async () => {
+      try {
+        const { data } = await axiosInstance.get("/api/reservations/occupied", {
+          params: { date, slot_id: slotId }
+        });
+        if (!cancel) setOccupiedIds((data?.occupied || []).map(Number));
+      } catch (e) {
+        console.error("Failed to fetch occupied tables", e);
+        if (!cancel) setOccupiedIds([]);
+      }
+    })();
+
+    return () => { cancel = true; };
+  }, [date, slotId]);
+
+  // select up to 2 tables that fit guest count
+  const [selected, setSelected] = useState([]);
+  const toggleSelect = (id) => {
     setSelected((prev) => {
-      if (prev.includes(tableId)) return prev.filter((id) => id !== tableId);
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
       if (prev.length >= 2) return prev;
-      return [...prev, tableId];
+      return [...prev, id];
     });
   };
 
   const proceed = () => {
     const chosen = tables.filter((t) => selected.includes(t.id));
     navigate("/reservation-form", {
-      state: {
-        date,
-        time,
-        guests,
-        tables: chosen,
-        totalFee: chosen.reduce((s, t) => s + (t.price || 0), 0),
-      },
+      state: { date, time, guests, tables: chosen, slot_id: slotId },
     });
   };
 
-  // Guard: user came directly
   useEffect(() => {
     if (!date || !time || !guests) {
       navigate("/reservations", { replace: true });
@@ -172,7 +160,6 @@ export default function TableAvailability() {
   return (
     <div className="min-h-screen bg-emerald-50/50 dark:bg-gray-900 text-gray-800 dark:text-white">
       <div className="max-w-7xl mx-auto px-6 md:px-6 py-8">
-        {/* Header */}
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-3xl font-bold">Select a Table</h1>
@@ -181,9 +168,7 @@ export default function TableAvailability() {
               <span className="font-medium">Time:</span> {time} &nbsp;•&nbsp;
               <span className="font-medium">Guests:</span> {guests}
             </p>
-            <p className="text-sm mt-1 opacity-80">
-              You can select up to <b>2</b> tables for this time slot.
-            </p>
+            <p className="text-sm mt-1 opacity-80">You can select up to <b>2</b> tables for this time slot.</p>
           </div>
 
           <div className="flex gap-2">
@@ -196,12 +181,11 @@ export default function TableAvailability() {
             <button
               disabled={selected.length === 0}
               onClick={proceed}
-              className={[
-                "px-4 py-2 rounded-lg font-semibold",
+              className={`px-4 py-2 rounded-lg font-semibold ${
                 selected.length === 0
-                  ? "bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-700 dark:text-gray-500"
-                  : "bg-emerald-500 text-white hover:bg-emerald-600",
-              ].join(" ")}
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : "bg-emerald-500 text-white hover:bg-emerald-600"
+              }`}
             >
               Continue
             </button>
@@ -219,7 +203,7 @@ export default function TableAvailability() {
             Available
           </span>
           <span className="inline-flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-rose-500 inline-block" />
+            <span className="w-3 h-3 rounded-full bg-rose-600 inline-block" />
             Occupied
           </span>
         </div>
@@ -229,7 +213,6 @@ export default function TableAvailability() {
           className="mt-6 relative rounded-xl border bg-white/70 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
           style={{ height: 520, overflow: "hidden" }}
         >
-          {/* grid feel */}
           <div
             className="absolute inset-0 pointer-events-none opacity-[0.06]"
             style={{
@@ -247,20 +230,15 @@ export default function TableAvailability() {
 
           {!loading &&
             tables.map((t) => {
-              const occupied = occupiedSet.has(t.id);
+              const occupied = occupiedIds.includes(Number(t.id));
               const isSelected = selected.includes(t.id);
-
               const fitsGuests = guests ? t.capacity >= guests : true;
               const selectable = !occupied && fitsGuests;
 
               return (
-                <div
-                  key={t.id}
-                  className="absolute"
-                  style={{ left: t.x, top: t.y }}
-                >
-                 <div style={{ width: TABLE_W }}>
-                <TableNode
+                <div key={t.id} className="absolute" style={{ left: t.x, top: t.y }}>
+                  <div style={{ width: TABLE_W }}>
+                    <TableNode
                       table={t}
                       occupied={occupied}
                       selected={isSelected}
@@ -273,7 +251,6 @@ export default function TableAvailability() {
             })}
         </div>
 
-        {/* Footer info */}
         <div className="mt-6 text-sm opacity-80">
           Selected ({selected.length}/2):{" "}
           {selected.length ? selected.join(", ") : "No tables selected yet."}

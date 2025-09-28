@@ -1,101 +1,102 @@
-// client/src/components/customerProfileComponents/CustomerReservationsTable.jsx
-import React, { useMemo, useState } from "react";
+// src/pages/customer/ReservationList.jsx
+import React, { useEffect, useState } from "react";
+import axios from "../../utils/axiosInstance";
 
-const FAKE_ROWS = [
-  { id: 101, date: "2025-08-10", start: "18:00", end: "20:00", guests: 4, status: "completed" },
-  { id: 102, date: "2025-08-08", start: "12:30", end: "14:30", guests: 2, status: "completed" },
-  { id: 103, date: "2025-08-05", start: "19:00", end: "21:00", guests: 6, status: "cancelled" },
-  { id: 104, date: "2025-07-30", start: "11:00", end: "13:00", guests: 3, status: "completed" },
-  { id: 105, date: "2025-07-22", start: "17:30", end: "19:30", guests: 5, status: "completed" },
-  { id: 106, date: "2025-07-18", start: "13:00", end: "15:00", guests: 2, status: "completed" },
-  { id: 107, date: "2025-07-11", start: "20:00", end: "22:00", guests: 4, status: "completed" },
-];
+export default function ReservationList() {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
 
-function to12(hm) {
-  const [h, m] = hm.split(":").map(Number);
-  const ampm = h >= 12 ? "PM" : "AM";
-  const hh = ((h + 11) % 12) + 1;
-  return `${hh}:${String(m).padStart(2, "0")} ${ampm}`;
-}
-
-export default function CustomerReservationsTable() {
-  const [rows, setRows] = useState(FAKE_ROWS);
-
-  const handleDelete = (id) => {
-    if (!window.confirm("Delete this reservation?")) return;
-    setRows((r) => r.filter((x) => x.id !== id));
+  const load = async () => {
+    setLoading(true);
+    setErr("");
+    try {
+      const { data } = await axios.get("/api/reservations/mine");
+      setRows(data.reservations || []);
+    } catch (e) {
+      setErr(e?.response?.data?.message || "Failed to load reservations");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const sorted = useMemo(
-    () =>
-      [...rows].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)),
-    [rows]
-  );
+  useEffect(() => { load(); }, []);
+
+  // NEW: immediate cancel (>= 24h rule)
+  const cancelNow = async (id) => {
+    if (!window.confirm("Cancel this reservation? If it’s 24+ hours before the start time, it will be cancelled immediately.")) return;
+    try {
+      await axios.post(`/api/reservations/${id}/cancel`); // new endpoint
+      await load();
+      alert("Reservation cancelled.");
+    } catch (e) {
+      const msg = e?.response?.data?.message || "Unable to cancel.";
+      alert(msg);
+    }
+  };
 
   return (
     <div className="p-6">
-      <h1 className="mb-4 text-2xl font-bold text-gray-900 dark:text-gray-100">
-        Past Reservations
-      </h1>
+      <h1 className="text-2xl font-bold mb-4">My Reservations</h1>
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
-        {sorted.length === 0 ? (
-          <div className="p-6 text-gray-600 dark:text-gray-300">
-            No reservations (dummy list is empty).
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 text-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                <tr>
-                  <th className="px-6 py-3 text-left font-semibold">Reservation Date</th>
-                  <th className="px-6 py-3 text-left font-semibold">Time</th>
-                  <th className="px-6 py-3 text-left font-semibold">Number of Guests</th>
-                  <th className="px-6 py-3 text-left font-semibold">Status</th>
-                  <th className="px-6 py-3 text-left font-semibold">Delete</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {sorted.map((r) => (
-                  <tr key={r.id}>
-                    <td className="px-6 py-3 text-gray-900 dark:text-gray-100">
-                      {new Date(r.date).toLocaleDateString(undefined, {
-                        weekday: "short",
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </td>
-                    <td className="px-6 py-3 text-gray-700 dark:text-gray-300">
-                      {to12(r.start)} – {to12(r.end)}
-                    </td>
-                    <td className="px-6 py-3 text-gray-700 dark:text-gray-300">{r.guests}</td>
-                    <td className="px-6 py-3">
-                      <span
-                        className={
-                          "rounded-full px-2 py-0.5 text-xs font-semibold " +
-                          (r.status === "cancelled"
-                            ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-100"
-                            : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-100")
-                        }
-                      >
-                        {r.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3">
-                      <button
-                        onClick={() => handleDelete(r.id)}
-                        className="rounded-md bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      {loading && <div>Loading…</div>}
+      {err && <div className="text-red-500">{err}</div>}
+
+      <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+        <table className="min-w-full text-sm">
+          <thead className="bg-gray-50 dark:bg-gray-800/40">
+            <tr className="text-left">
+              <th className="px-4 py-3">UID</th>
+              <th className="px-4 py-3">Date & Time</th>
+              <th className="px-4 py-3">Guests</th>
+              <th className="px-4 py-3">Tables</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Cancel</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+            {rows.map((r) => (
+              <tr key={r.id} className="hover:bg-gray-50/60 dark:hover:bg-gray-800/30">
+                <td className="px-4 py-3 font-mono">{r.id}</td>
+                <td className="px-4 py-3">{r.reserved_date} — {r.slot_label}</td>
+                <td className="px-4 py-3">{r.guests}</td>
+                <td className="px-4 py-3">{(r.tables || []).map(t => t.table_code).join(", ")}</td>
+                <td className="px-4 py-3">
+                  <span
+                    className={`px-2 py-1 rounded text-xs ${
+                      r.status === "booked"
+                        ? "bg-amber-100 text-amber-700"
+                        : r.status === "cancelled"
+                        ? "bg-rose-100 text-rose-700"
+                        : "bg-emerald-100 text-emerald-700"
+                    }`}
+                  >
+                    {r.status}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  {r.status === "booked" ? (
+                    <button
+                      onClick={() => cancelNow(r.id)}
+                      className="px-3 py-1 rounded bg-rose-600 text-white hover:bg-rose-700"
+                    >
+                      Cancel
+                    </button>
+                  ) : (
+                    <span className="opacity-60">—</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+            {rows.length === 0 && !loading && (
+              <tr>
+                <td className="px-4 py-6 text-center opacity-70" colSpan={6}>
+                  No reservations.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

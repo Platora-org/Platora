@@ -246,12 +246,12 @@ const TableNode = ({ table }) => (
   <div
     className="rounded- px-4 py-2 text-sm font-medium shadow-sm bg-gray-900 text-white dark:bg-gray-700"
     style={{ width: 130, textAlign: "center" }}
-    title={`Table ${table.table_code || table.id} • ${table.capacity} ppl • $${table.price}`}
+    title={`Table ${table.table_code || table.id} • ${table.capacity} ppl • ${table.price}coins`}
   >
     <div className="text-xs opacity-80">{table.table_code || table.id}</div>
     <div className="text-[11px] opacity-70">
       {table.capacity} people · 
-      ${table.price}
+      {table.price}coins
     </div>
   </div>
 );
