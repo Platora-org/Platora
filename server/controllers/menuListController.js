@@ -5,9 +5,6 @@ export const fetchMenuList = async (req, res) => {
     const id = req.params.id;
     const menu = await getAllMenus(id);
 
-     if (!menu || menu.length === 0) {
-      return res.status(404).json({ message: "No menu items found for this restaurant" });
-    }
 
     res.json(menu);
     

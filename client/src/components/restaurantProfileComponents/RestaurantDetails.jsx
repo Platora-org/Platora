@@ -45,11 +45,14 @@ const RestaurantDetails = () => {
                     cuisineType: profileData.cuisineType || '',
                 };
 
+                
+
                 setFormData(sanitizedData);
                 setOriginalData(sanitizedData);
 
                 if (profileData.profileImageUrl) {
                     setProfileImage(profileData.profileImageUrl);
+                    console.log( "===========================================",profileData.profileImageUrl, "===========================================")
                 }
             } catch (err) {
                 console.error('Error loading profile data:', err);
@@ -68,14 +71,25 @@ const RestaurantDetails = () => {
         if (field === 'firstName' || field === 'lastName') {
             const nameRegex = /^[A-Za-z\s]*$/;
             if (nameRegex.test(value)) {
-                setFormData(prev => ({ ...prev, [field]: value }));
+                setFormData(prev => ({ ...prev, [field]: value }));         
             }
         } else if (field === 'phone') {
             if (/^[0-9]*$/.test(value) && value.length <= 10 && (value.length === 0 || value.startsWith('0'))) {
                  if (value.length > 1 && !value.startsWith('07')) return;
                  setFormData(prev => ({ ...prev, [field]: value }));
             }
-        } else {
+        } else if (field === 'cuisineType') {
+            const nameRegex = /^[A-Za-z\s]*$/;
+            if (nameRegex.test(value)) {
+                setFormData(prev => ({ ...prev, [field]: value }));         
+            }
+        }else if (field === 'restaurantName') {
+            const nameRegex = /^[A-Za-z\s]*$/;
+            if (nameRegex.test(value)) {
+                setFormData(prev => ({ ...prev, [field]: value }));         
+            }
+        }
+        else {
             setFormData(prev => ({ ...prev, [field]: value }));
         }
     };

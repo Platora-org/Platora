@@ -11,7 +11,8 @@ export const getRestaurantById = async (userId) => {
       u.role,
       r.restaurant_name AS "restaurantName",
       r.id AS "restaurantId",
-      r.cuisine_type AS "cuisineType"
+      r.cuisine_type AS "cuisineType",
+      r.profile_image_url AS "profileImageUrl"
     FROM users u
     LEFT JOIN restaurant_profiles r ON u.id = r.user_id
     WHERE u.id = $1
@@ -56,4 +57,16 @@ export const updateRestaurantProfile = async (userId, data) => {
   } finally {
     client.release();
   }
+};
+export const updateProfileImageUrl = async (userId, imageUrl) => {
+  const result = await pool.query(
+    `
+    UPDATE restaurant_profiles
+    SET profile_image_url = $1
+    WHERE user_id = $2
+    RETURNING profile_image_url
+    `,
+    [imageUrl, userId]
+  );
+  return result.rows[0];
 };

@@ -15,7 +15,7 @@ function RestaurantsDisplay() {
     const fetchRestaurants = async () => {
        try {
         const res = await axios.get("http://localhost:3000/restaurants/data/all");
-        console.log(res);
+        console.log(res.data)
         setRestaurants(res.data); // save data in state
       } catch (err) {
         setError(err.message); // save error if any
@@ -55,7 +55,7 @@ function RestaurantsDisplay() {
               {/* Restaurant Image */}
               <div className="relative w-full h-52 overflow-hidden">
                 <img
-                  src={restaurant.image_url}
+                  src={restaurant.profile_image_url?restaurant.profile_image_url:"https://placehold.co/600x400/e0e0e0/757575?text=No+Image"}
                   alt={restaurant.restaurant_name}
                   // Added a subtle zoom effect on the image
                   className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
@@ -66,11 +66,14 @@ function RestaurantsDisplay() {
                   }}
                 />
                 {/* --- NEW: Subtle overlay on hover --- */}
+                {restaurant.cuisine_type ?( <>
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 <div className="absolute top-3 right-3 bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">
                   {restaurant.cuisine_type}
-                </div>
+                </div></>)
+                :null}
               </div>
+                
 
               {/* Restaurant Info */}
               {/* Added flex classes to position the button at the bottom */}

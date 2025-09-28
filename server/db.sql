@@ -36,6 +36,7 @@ CREATE TABLE restaurant_profiles (
   id SERIAL PRIMARY KEY,
   user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
   restaurant_name VARCHAR(100),
+  profile_image_url TEXT,
   cuisine_type VARCHAR(50)
 );
 
