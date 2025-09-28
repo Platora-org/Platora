@@ -1219,36 +1219,125 @@ export const getTransactions = async (req, res) => {
   try {
     const userId = req.user.id;
     const { 
-      page = 1, 
-      limit = 20, 
       type, 
+      startDate, 
+      endDate, 
       status, 
-      dateFrom, 
-      dateTo 
+      page = 1, 
+      limit = 50 
     } = req.query;
 
-    const offset = (page - 1) * limit;
-    const filters = {};
+    let query = `
+      SELECT 
+        t.*,
+        CASE 
+          WHEN t.metadata->>'restaurant_id' IS NOT NULL 
+          THEN rp.restaurant_name 
+          ELSE NULL 
+        END as restaurant_name
+      FROM transactions t
+      LEFT JOIN restaurant_profiles rp ON (t.metadata->>'restaurant_id')::int = rp.id
+      WHERE t.user_id = $1
+    `;
     
-    if (type) filters.type = type.toUpperCase();
-    if (status) filters.status = status.toUpperCase();
-    if (dateFrom) filters.dateFrom = dateFrom;
-    if (dateTo) filters.dateTo = dateTo;
-
-    const result = await TransactionModel.getTransactionsByUserId(userId, parseInt(limit), offset, filters);
-
+    const params = [userId];
+    let paramCount = 1;
+    
+    if (type) {
+      paramCount++;
+      query += ` AND t.transaction_type = $${paramCount}`;
+      params.push(type);
+    }
+    
+    if (startDate) {
+      paramCount++;
+      query += ` AND DATE(t.created_at) >= $${paramCount}`;
+      params.push(startDate);
+    }
+    
+    if (endDate) {
+      paramCount++;
+      query += ` AND DATE(t.created_at) <= $${paramCount}`;
+      params.push(endDate);
+    }
+    
+    if (status) {
+      paramCount++;
+      query += ` AND t.status = $${paramCount}`;
+      params.push(status);
+    }
+    
+    query += ` ORDER BY t.created_at DESC`;
+    
+    // Add pagination
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    paramCount++;
+    query += ` LIMIT $${paramCount}`;
+    params.push(parseInt(limit));
+    
+    paramCount++;
+    query += ` OFFSET $${paramCount}`;
+    params.push(offset);
+    
+    console.log('Executing query:', query);
+    console.log('With params:', params);
+    
+    const result = await pool.query(query, params);
+    
+    // Get total count for pagination
+    let countQuery = `
+      SELECT COUNT(*) as total
+      FROM transactions t
+      WHERE t.user_id = $1
+    `;
+    const countParams = [userId];
+    let countParamIndex = 1;
+    
+    if (type) {
+      countParamIndex++;
+      countQuery += ` AND t.transaction_type = $${countParamIndex}`;
+      countParams.push(type);
+    }
+    
+    if (startDate) {
+      countParamIndex++;
+      countQuery += ` AND DATE(t.created_at) >= $${countParamIndex}`;
+      countParams.push(startDate);
+    }
+    
+    if (endDate) {
+      countParamIndex++;
+      countQuery += ` AND DATE(t.created_at) <= $${countParamIndex}`;
+      countParams.push(endDate);
+    }
+    
+    if (status) {
+      countParamIndex++;
+      countQuery += ` AND t.status = $${countParamIndex}`;
+      countParams.push(status);
+    }
+    
+    const countResult = await pool.query(countQuery, countParams);
+    const totalCount = parseInt(countResult.rows[0].total);
+    
     res.json({
       success: true,
-      ...result,
-      page: parseInt(page),
-      totalPages: Math.ceil(result.total / limit)
+      transactions: result.rows,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalCount / parseInt(limit)),
+        totalCount,
+        hasNext: parseInt(page) * parseInt(limit) < totalCount,
+        hasPrev: parseInt(page) > 1
+      }
     });
-
+    
   } catch (error) {
     console.error('Error fetching transactions:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch transactions'
+      message: 'Failed to fetch transactions',
+      error: error.message
     });
   }
 };

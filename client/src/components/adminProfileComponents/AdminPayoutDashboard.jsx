@@ -162,23 +162,8 @@ const AdminPayoutDashboard = () => {
     payout.restaurant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     payout.restaurant_email.toLowerCase().includes(searchTerm.toLowerCase())
   );
-}
-
-export default AdminPayoutDashboard;
 
   const totalPendingAmount = pendingPayouts.reduce((sum, p) => sum + parseFloat(p.amount_lkr || 0), 0);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen p-6 transition-colors duration-300 bg-emerald-50/50 dark:bg-gray-900">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const StatCard = ({ title, value, subtitle, icon: Icon, color = 'emerald', bgColor = 'emerald' }) => (
     <div className="rounded-xl p-6 border shadow-sm bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700 transition-all hover:shadow-md">
@@ -198,6 +183,18 @@ export default AdminPayoutDashboard;
       </div>
     </div>
   );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen p-6 transition-colors duration-300 bg-emerald-50/50 dark:bg-gray-900">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-6 transition-colors duration-300 bg-emerald-50/50 dark:bg-gray-900">
@@ -588,3 +585,6 @@ export default AdminPayoutDashboard;
       </div>
     </div>
   );
+};
+
+export default AdminPayoutDashboard;

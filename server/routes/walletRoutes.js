@@ -58,7 +58,9 @@ import {
   exportTransactions,
   getCustomerSpendingAnalytics,
   generateTransactionInvoice,
-  generateMonthlyStatement
+  generateMonthlyStatement,
+  generateAdminStatement,
+  getAdminTransactions
 } from '../controllers/analyticsController.js';
 import verifyJWT from "../middleware/verifyToken.js";
 import checkRole from "../middleware/requireRole.js";
@@ -184,17 +186,17 @@ router.get("/security/logs",
       
       if (userId) {
         paramCount++;
-        query += ` AND sl.user_id = $${paramCount}`;
+        query += ` AND sl.user_id = ${paramCount}`;
         values.push(userId);
       }
       
       if (action) {
         paramCount++;
-        query += ` AND sl.action = $${paramCount}`;
+        query += ` AND sl.action = ${paramCount}`;
         values.push(action);
       }
       
-      query += ` ORDER BY sl.created_at DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
+      query += ` ORDER BY sl.created_at DESC LIMIT ${paramCount + 1} OFFSET ${paramCount + 2}`;
       values.push(limit, offset);
       
       const result = await pool.query(query, values);
@@ -320,7 +322,7 @@ router.put("/settings",
       const addField = (field, value) => {
         if (value !== undefined) {
           paramCount++;
-          updateFields.push(`${field} = $${paramCount}`);
+          updateFields.push(`${field} = ${paramCount}`);
           values.push(value);
         }
       };
@@ -343,7 +345,7 @@ router.put("/settings",
       const query = `
         UPDATE wallet_settings 
         SET ${updateFields.join(', ')}, updated_at = NOW()
-        WHERE user_id = $${paramCount + 1}
+        WHERE user_id = ${paramCount + 1}
         RETURNING *
       `;
       
@@ -455,6 +457,10 @@ router.get('/analytics/dashboard', verifyJWT, getDashboardAnalytics);
 router.get('/analytics/trends', verifyJWT, getTransactionTrends);
 router.get('/analytics/customers', verifyJWT, getCustomerSpendingAnalytics);
 router.get('/analytics/export', verifyJWT, exportTransactions);
+
+// Admin transaction routes
+router.get('/admin/transactions', verifyJWT, checkRole("admin"), getAdminTransactions);
+router.get('/admin/statement', verifyJWT, checkRole("admin"), generateAdminStatement);
 
 // PDF generation routes
 router.get('/invoice/:transactionId', verifyJWT, generateTransactionInvoice);

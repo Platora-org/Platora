@@ -29,7 +29,9 @@ const AdminFoodCourt = lazy(() => import("../components/adminProfileComponents/A
 const CustomerWallet = lazy(() => import("../components/customerProfileComponents/CustomerWalletDashboard"));
 const Plate = lazy(() => import("../pages/Plate"));
 const CustomerOrders = lazy(() => import("../components/customerProfileComponents/CustomerOrders"))
-
+const AdminPayoutDashboard = lazy(() => import("../components/adminProfileComponents/AdminPayoutDashboard"));
+const AdminAnalytictsDashboard = lazy(() => import("../components/adminProfileComponents/AdminAnalyticsDashboard"));
+const TransactionList = lazy(() => import("../components/adminProfileComponents/TransactionList"));
 
 export const appRoutes = [
   {
@@ -177,8 +179,18 @@ export const appRoutes = [
         path: "reservations/food-court",
         component: AdminFoodCourt 
       },
-      
-
+      {
+        path: "adminpayouts",
+        component: AdminPayoutDashboard
+      },
+      {
+        path: "walletAnalytics",
+        component: AdminAnalytictsDashboard
+      },
+      {
+        path: "transactions",
+        component: TransactionList
+      },
     ]
   },
 
