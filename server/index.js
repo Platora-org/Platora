@@ -25,6 +25,7 @@ import walletRoutes from './routes/walletRoutes.js';
 import cron from 'node-cron';
 import * as WalletService from './services/walletService.js';
 import recipeRoutes from './routes/recipeRoutes.js';
+import restaurantProfileRoutes from './routes/restaurantProfileRoutes.js'; 
 
 const app = express();
 const port = 3000;
@@ -63,6 +64,7 @@ app.use('/api/carts/count', cartCountRoutes);
 app.use('/restaurants/inventory', inventoryRoutes);
 app.use('/restaurants/menuItems', menuRoutes);
 app.use('/api/recipes', recipeRoutes);
+app.use('/api/restaurant/profile', restaurantProfileRoutes);
 
 
 app.use('/api/restaurant/kyc', kycRoutes);
@@ -106,6 +108,8 @@ app.use((req, res) => {
     path: req.originalUrl
   });
 });
+
+
 
 
 

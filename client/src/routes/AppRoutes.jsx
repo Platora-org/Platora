@@ -29,6 +29,10 @@ const AdminFoodCourt = lazy(() => import("../components/adminProfileComponents/A
 const CustomerWallet = lazy(() => import("../components/customerProfileComponents/CustomerWalletDashboard"));
 const Plate = lazy(() => import("../pages/Plate"));
 const CustomerOrders = lazy(() => import("../components/customerProfileComponents/CustomerOrders"))
+const RestaurantDetails = lazy(() => import("../components/restaurantProfileComponents/RestaurantDetails"))
+
+
+
 
 
 export const appRoutes = [
@@ -147,6 +151,10 @@ export const appRoutes = [
       {
         path: "menu",
         component: Menu, 
+      },
+       {
+        path: "details",
+        component: RestaurantDetails, 
       },
     ]
   },
