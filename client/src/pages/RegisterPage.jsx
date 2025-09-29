@@ -104,14 +104,39 @@ function RegisterPage() {
     // --- Input Handlers with Validation ---
     const handleEmailChange = (e) => {
         const val = e.target.value;
-        setEmail(val);
-        setErrors(prev => ({ ...prev, email: validateEmail(val) ? '' : 'Invalid email format' }));
+        // Allows only valid email characters
+        const sanitizedValue = val.replace(/[^a-zA-Z0-9@._-]/g, '');
+        setEmail(sanitizedValue);
+        setErrors(prev => ({ ...prev, email: validateEmail(sanitizedValue) ? '' : 'Invalid email format' }));
     };
 
     const handlePhoneChange = (e) => {
         const val = e.target.value;
-        setPhone(val);
-        setErrors(prev => ({ ...prev, phone: validatePhone(val) ? '' : 'Invalid phone format (e.g., 07XXXXXXXX)' }));
+        // Allows only numbers and limits length to 10
+        const sanitizedValue = val.replace(/[^0-9]/g, '');
+        if (sanitizedValue.length <= 10) {
+            setPhone(sanitizedValue);
+            setErrors(prev => ({ ...prev, phone: validatePhone(sanitizedValue) ? '' : 'Invalid phone format (e.g., 07XXXXXXXX)' }));
+        }
+    };
+
+      const handleFirstNameChange = (e) => {
+        // Allows only letters, spaces, and hyphens for names
+        const sanitizedValue = e.target.value.replace(/[^a-zA-Z\s-]/g, '');
+        setFirstName(sanitizedValue);
+    };
+    
+    const handleLastNameChange = (e) => {
+        // Allows only letters, spaces, and hyphens for names
+        const sanitizedValue = e.target.value.replace(/[^a-zA-Z\s-]/g, '');
+        setLastName(sanitizedValue);
+    };
+
+    const handleRestaurantNameChange = (e) => {
+        // Allows letters, numbers, spaces, and some special characters
+        // The hyphen '-' is now escaped to be treated as a literal character.
+        const sanitizedValue = e.target.value.replace(/[^a-zA-Z0-9\s'\-&]/g, '');
+        setRestaurantName(sanitizedValue);
     };
 
     const handlePasswordChange = (e) => {
@@ -203,7 +228,7 @@ function RegisterPage() {
                                             type="text"
                                             placeholder="Enter restaurant name"
                                             value={restaurantName}
-                                            onChange={(e) => setRestaurantName(e.target.value)}
+                                            onChange={handleFirstNameChange}
                                             className="block text-sm w-full px-4 py-2.5 text-gray-700 placeholder-gray-400 bg-white border border-gray-200 rounded-lg dark:placeholder-gray-600 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-500 focus:outline-none focus:ring-0"
                                         />
                                     </motion.div>
@@ -216,7 +241,7 @@ function RegisterPage() {
                                     type="text"
                                     placeholder="John"
                                     value={firstName}
-                                    onChange={(e) => setFirstName(e.target.value)}
+                                    onChange={handleFirstNameChange}
                                     className="block text-sm w-full px-4 py-2.5 mt-2 text-gray-700 placeholder-gray-400 bg-white border border-gray-200 rounded-lg dark:placeholder-gray-600 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-500 focus:outline-none focus:ring-0"
                                 />
                             </div>
@@ -227,7 +252,7 @@ function RegisterPage() {
                                     type="text"
                                     placeholder="Snow"
                                     value={lastName}
-                                    onChange={(e) => setLastName(e.target.value)}
+                                    onChange={handleLastNameChange}
                                     className="block text-sm w-full px-4 py-2.5 mt-2 text-gray-700 placeholder-gray-400 bg-white border border-gray-200 rounded-lg dark:placeholder-gray-600 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-500 focus:outline-none focus:ring-0"
                                 />
                             </div>

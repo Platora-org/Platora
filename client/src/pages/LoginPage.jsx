@@ -16,6 +16,12 @@ function LoginPage() {
     const [password, setPassword] = useState('');
     const [isFormValid, setIsFormValid] = useState(false);
 
+     const handleEmailChange = (e) => {
+        const value = e.target.value;
+        const sanitizedValue = value.replace(/[^a-zA-Z0-9@._-]/g, '');
+        setEmail(sanitizedValue);
+    };
+
     const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
     const handleSubmit = async (e) => {
@@ -86,7 +92,7 @@ function LoginPage() {
                                     id="email"
                                     value={email}
                                     placeholder="example@example.com"
-                                    onChange={(e) => setEmail(e.target.value)}
+                                    onChange={handleEmailChange}
                                     className="block text-sm w-full px-4 py-2.5 mt-2 text-gray-700 placeholder-gray-400 bg-white border border-gray-200 rounded-lg dark:placeholder-gray-600 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-500 focus:outline-none focus:ring-0"
                                 />
                             </div>
