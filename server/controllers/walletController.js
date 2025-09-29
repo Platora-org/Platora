@@ -235,6 +235,29 @@ export const getPinSecurityReport = async (req, res) => {
 };
 
 console.log("SAYUNI");
+export const process = async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const userId = req.user.id;
+    const {
+      originalTransactionId,
+      refundAmount,
+      reason = "Customer request",
+    } = req.body;
+    } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Error processing refund:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to process refund",
+    });
+  } finally {
+    client.release();
+  }
+};
+
+
 // Process refund
 export const processRefund = async (req, res) => {
   const client = await pool.connect();
