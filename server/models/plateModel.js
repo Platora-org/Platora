@@ -17,14 +17,13 @@ export async function getOrCreateCartId(userId) {
 //to get the customer_id
 export async function getCustomerId(id) {
   const query =  await pool.query('SELECT id FROM customer_profiles WHERE user_id = $1',[id]);
-
-    console.log(query.rows);            
+    //console.log(query.rows);            
   return query.rows[0].id;
 }
 
 export async function getItems(cartId) {
     const query = `
-      SELECT ci.id, ci.quantity, mi.name, mi.price, mi.image_url
+      SELECT ci.id, ci.menu_item_id , ci.quantity, mi.name, mi.price, mi.image_url
       FROM cart_items ci
       JOIN menu_items mi ON ci.menu_item_id = mi.id
       WHERE ci.cart_id = $1;
@@ -64,4 +63,17 @@ export async function removeItem(cartItemId) {
     return { message: "Item removed" };
   }
 
+export async function getCartItemsByCustomer(customerProfileId) {
+  const { rows } = await pool.query(
+    `SELECT ci.id AS cart_item_id, ci.quantity AS ordered_qty,
+            mi.id AS menu_item_id, mi.name AS menu_name
+     FROM carts c
+     JOIN cart_items ci ON ci.cart_id = c.id
+     JOIN menu_items mi ON mi.id = ci.menu_item_id
+     WHERE c.customer_id = $1`,
+    [customerProfileId]
+  );
+  console.log("all the cart items according the customerid====",rows);
+  return rows;
+}  
 

@@ -5,9 +5,10 @@ import path from "path";
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
-import {configurePassport} from './config/passport.js';
+import { configurePassport } from './config/passport.js';
 import authRoutes from './routes/authRoutes.js';
 import customerProfileRoutes from './routes/customerProfileRoutes.js';
+
 import adminProfileRoutes from './routes/adminProfileRoutes.js'
 import kycRoutes from './routes/kycRoutes.js';
 import auditRoutes from './routes/auditRoutes.js';
@@ -24,16 +25,28 @@ import adminAvailabilityRoutes from "./routes/adminAvailabilityRoutes.js";
 import walletRoutes from './routes/walletRoutes.js';
 import cron from 'node-cron';
 import * as WalletService from './services/walletService.js';
+
+import customerOrders from './routes/orderRoutes.js';
+import orderRoutes from "./routes/orderRoutes.js";
+import restaurantOrderRoutes from "./routes/restaurantOrderRoutes.js";
+
 import reservationRoutes from "./routes/reservationRoutes.js";
 import adminReservationsRoutes from "./routes/adminReservationRoutes.js";
 import recipeRoutes from './routes/recipeRoutes.js';
 import restaurantProfileRoutes from './routes/restaurantProfileRoutes.js'; 
 import securutyAuditRoutes from './routes/securityAuditRoutes.js';
 
-const app = express();
-const port = 3000;
+import adminProfileRoutes from './routes/adminProfileRoutes.js';
+
+
 
 dotenv.config();
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+
+
 
 app.use(cors({
   origin: 'http://localhost:5173', // React frontend
@@ -70,6 +83,8 @@ app.use('/restaurants/menuItems', menuRoutes);
 app.use('/api/recipes', recipeRoutes);
 app.use('/api/restaurant/profile', restaurantProfileRoutes);
 
+app.use('/api/orders', orderRoutes);
+app.use('/api/restaurant-orders', restaurantOrderRoutes);
 
 app.use('/api/restaurant/kyc', kycRoutes);
 app.use('/api/audit', auditRoutes);
@@ -126,8 +141,12 @@ app.use((req, res) => {
 
 
 
+app.get('/test', (req, res) => {
+  res.json({ message: "Server is working!" });
+});
 
 app.listen(port, () => {
-    console.log(`Server running on port ${3000}`);
-})
+  console.log(`Server running on port ${port}`);
+});
+
 

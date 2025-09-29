@@ -4,12 +4,17 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import axiosInstance from "../utils/axiosInstance";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../utils/AuthContext";
 
 function CartPage() {
   const [cartItems, setCartItems] = useState([]);
   const [orderType, setOrderType] = useState("pickup");
   const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [error, setError] = useState(null);
+  const { user } = useAuth();
+
+  console.log("let's see what we get==", user);
 
   useEffect(() => {
     const fetchCart = async () => {
@@ -19,6 +24,96 @@ function CartPage() {
     };
     fetchCart();
   }, []);
+
+  //inventory check
+  const [checking, setChecking] = useState(false);
+
+  const [canProceed, setCanProceed] = useState(false);
+
+  const handleCheckout = async () => {
+    setChecking(true);
+
+    let shortages = [];
+
+    try {
+      // Step 1: Inventory check
+      const res = await axiosInstance.post("/api/orders/inventoryCheck");
+      console.log("Inventory check response:", res.data);
+      shortages = res.data.shortages || [];
+
+      if (shortages.length > 0) {
+        setError(shortages);
+        setCanProceed(false);
+        return;
+      } else {
+        console.log("All items are available!");
+        setCanProceed(true);
+      }
+     
+      try {
+        const walletReturn = await axiosInstance.post(
+          "/api/wallet/checkSufficient",
+          {
+            coins: lkrToCoins(totalPrice),
+          }
+        );
+        console.log(walletReturn)
+        setCanProceed(true);
+      } catch (err) {
+        console.error("Wallet error:", err?.response?.data || err.message);
+        setError(
+          err?.response?.data?.message ||
+            "Something went wrong while reserving. Please try again."
+        );
+        setCanProceed(false);
+        return;
+      }
+
+      for (const item of cartItems) {
+         console.log("========================================", item);
+        try {
+          const walletReturn = await axiosInstance.post("/api/wallet/spend", {
+            coins: lkrToCoins(item.price),
+            menu_item_id: item.menu_item_id, // Use reservationId instead of orderId
+            description: `Order ${item.name}`,
+          });
+
+          console.log("Wallet success:", walletReturn.data);
+        } catch (err) {
+          console.error("Wallet error:", err?.response?.data || err.message);
+          setError(
+            err?.response?.data?.message ||
+              "Something went wrong while reserving. Please try again."
+          );
+          return; // stop further processing if one fails
+        }
+      }
+
+      // Step 3: If everything passes
+      console.log("E-wallet balance is sufficient. Proceeding to checkout...");
+    } catch (err) {
+      console.error("Error checking inventory or wallet:", err);
+      setError("Failed to check availability. Try again.");
+      setCanProceed(false);
+    } finally {
+      setChecking(false);
+    }
+
+    // Now both variables are in scope here
+    if (shortages.length === 0) {
+      try {
+        const res = await axiosInstance.post("/api/orders/checkout", {});
+
+        console.log("Order placed:", res.data);
+        alert("Checkout successful!");
+        setCartItems([]);
+        window.dispatchEvent(new Event("cartUpdated"));
+      } catch (err) {
+        console.error("Checkout failed:", err);
+        setError("Checkout failed. Try again.");
+      }
+    }
+  };
 
   // Remove item
   const removeItem = async (id) => {
@@ -84,6 +179,11 @@ function CartPage() {
     navigate(-1);
   };
 
+  const lkrToCoins = (lkr) => {
+    const exchangeRate = 50;
+    return lkr / exchangeRate;
+  };
+
   return (
     <section className="bg-emerald-50/50 dark:bg-gray-900 min-h-screen py-16">
       <div className="container mx-auto px-6">
@@ -105,6 +205,75 @@ function CartPage() {
           <ShoppingCart className="w-10 md:w-16 h-10 md:h-16 text-emerald-500" />
           Your Cart
         </motion.h2>
+
+        {error && (
+          <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-5 shadow-lg transition duration-300">
+            <div className="flex items-start">
+              {/* Alert Icon */}
+              <svg
+                className="w-6 h-6 text-red-500 mr-3 flex-shrink-0 mt-0.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+
+              <div className="text-red-700 dark:text-red-400 flex-1">
+                {Array.isArray(error) ? (
+                  <>
+                    {/* Structured List for Shortages (fixes the newline issue) */}
+                    <p className="font-extrabold text-red-800 dark:text-red-200 mb-2 text-lg">
+                      Shortages Detected
+                    </p>
+                    <ul className="list-disc list-inside ml-2 space-y-2 text-sm">
+                      {error.map((s, i) => (
+                        <li key={i} className="text-red-700 dark:text-red-300">
+                          <span className="font-semibold text-red-800 dark:text-white">
+                            {s.menu_name}
+                          </span>
+                          : ordered {s.ordered}, but we can only make{" "}
+                          {s.canMake}.
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-4 text-red-600 dark:text-red-400 font-medium border-t border-red-700/30 pt-3">
+                      Please adjust your cart items and re-check availability.
+                    </p>
+                  </>
+                ) : (
+                  // Simple text display for general API errors
+                  <p>{error}</p>
+                )}
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => setError(null)}
+                className="ml-4 text-red-500 hover:text-red-700 flex-shrink-0 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
 
         {cartItems.length === 0 ? (
           <div className="text-center text-gray-600 dark:text-gray-300">
@@ -145,7 +314,7 @@ function CartPage() {
                       {item.name}
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Rs. {item.price * item.quantity}
+                      {lkrToCoins(item.price * item.quantity)} Coins
                     </p>
 
                     {/* Quantity Controls */}
@@ -191,15 +360,15 @@ function CartPage() {
               </h3>
               <div className="flex justify-between text-gray-600 dark:text-gray-300 mb-2">
                 <span>Subtotal</span>
-                <span>Rs. {totalPrice.toFixed(2)}</span>
+                <span>{lkrToCoins(totalPrice)} Coins</span>
               </div>
               <div className="flex justify-between text-gray-600 dark:text-gray-300 mb-4">
                 <span>Delivery</span>
-                <span>Rs. {deliveryFee.toFixed(2)}</span>
+                <span>{lkrToCoins(deliveryFee)} Coins</span>
               </div>
               <div className="flex justify-between font-bold text-gray-800 dark:text-white text-lg mb-6">
                 <span>Total</span>
-                <span>Rs. {grandTotal.toFixed(2)}</span>
+                <span>{lkrToCoins(grandTotal)} Coins</span>
               </div>
 
               {/* Delivery or Pickup Option */}
@@ -272,13 +441,13 @@ function CartPage() {
                 </div>
               )}
 
-              {/* Checkout Button */}
-              <Link
-                to="/checkout"
-                className="w-full bg-emerald-500 text-white font-bold py-3 px-4 rounded-3xl flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all duration-300 transform hover:scale-105"
+              <button
+                onClick={handleCheckout}
+                disabled={checking}
+                className="w-full bg-emerald-600 text-white font-bold py-3 px-4 rounded-3xl hover:bg-emerald-700 transition-all"
               >
-                Proceed to Checkout <ArrowRight size={18} />
-              </Link>
+                {checking ? "Processing…" : "Checkout"}
+              </button>
             </motion.div>
           </div>
         )}

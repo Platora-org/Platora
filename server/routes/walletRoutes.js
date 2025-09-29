@@ -3,6 +3,7 @@ import { body, validationResult } from "express-validator";
 import pool from "../config/db.js";
 import {
   getWallet,
+  walletCheck,
   getExchangeRates,
   updateExchangeRates,
   calculateCoinPrice,
@@ -465,5 +466,7 @@ router.get('/admin/statement', verifyJWT, checkRole("admin"), generateAdminState
 // PDF generation routes
 router.get('/invoice/:transactionId', verifyJWT, generateTransactionInvoice);
 router.get('/statement/monthly', verifyJWT, generateMonthlyStatement);
+
+router.post('/checkSufficient', verifyJWT, walletCheck);
 
 export default router;

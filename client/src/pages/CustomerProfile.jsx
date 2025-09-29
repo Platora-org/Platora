@@ -2,12 +2,20 @@ import React, { useState } from "react";
 import { Outlet } from "react-router-dom";
 import CustomerProfileSideBar from "../components/customerProfileComponents/CustomerProfileSideBar";
 import { useAuth } from '../utils/AuthContext';
+import ChatBox from "./components/ChatBox";
+
+
 
 const CustomerProfile = () => {
   const { logout, user } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
+  <ChatBox
+  orderId={order.id}
+  recipientEmail={order.restaurant_email} // order must include restaurant email
+/>
 
+ 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="flex">

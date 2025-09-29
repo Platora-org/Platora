@@ -31,12 +31,17 @@ const ReservationForm = lazy(() => import("../components/customerProfileComponen
 const AdminReservationList = lazy(() => import("../components/adminProfileComponents/AdminReservationList"));
 const Plate = lazy(() => import("../pages/Plate"));
 const CustomerOrders = lazy(() => import("../components/customerProfileComponents/CustomerOrders"))
+
+const RestaurantOrders = lazy(() => import("../components/restaurantProfileComponents/RestaurantOrders"))
+
 const RestaurantDetails = lazy(() => import("../components/restaurantProfileComponents/RestaurantDetails"))
 const AboutUs = lazy(() => import("../components/AboutUs"))
 const AdminPayoutDashboard = lazy(() => import("../components/adminProfileComponents/AdminPayoutDashboard"));
 const AdminAnalytictsDashboard = lazy(() => import("../components/adminProfileComponents/AdminAnalyticsDashboard"));
 const TransactionList = lazy(() => import("../components/adminProfileComponents/TransactionList"));
 const SecurityAuditLogs = lazy(() => import("../components/adminProfileComponents/SecurityAuditLogs"));
+const Chat = lazy(() => import("../pages/chat"));
+
 
 export const appRoutes = [
   {
@@ -157,6 +162,10 @@ export const appRoutes = [
         component: RestaurantWallet, 
       },
       {
+        path: "orders",
+        component: RestaurantOrders, 
+      },
+      {
         path: "menu",
         component: Menu, 
       },
@@ -235,6 +244,14 @@ export const appRoutes = [
     requiresAuth: true,
     allowedRoles: ["customer"],
   },
+
+
+  {
+  path: "/chat",
+  component: Chat,
+  requiresAuth: false,   // or false if you want it open to anyone
+  allowedRoles: [], // adjust depending on who can chat
+},
 
 
 ]

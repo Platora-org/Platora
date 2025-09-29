@@ -163,66 +163,30 @@ CREATE INDEX idx_kyc_audit_action ON kyc_audit_logs(action);
 CREATE INDEX idx_kyc_audit_created ON kyc_audit_logs(created_at);
 
 
--- menu_categories Table
-create table menu_categories (
-  id serial primary key,
-  restaurant_id integer not null references restaurant_profiles(id) on delete cascade,
-  name text not null,
-  created_at timestamptz default now()
-);
 
-
--- menu_items Table
-create table menu_items (
-  id serial primary key,
-  restaurant_id integer not null references restaurant_profiles(id) on delete cascade,
-  category_id integer references menu_categories(id) on delete set null,
-  name text not null,
-  description text,
-  price numeric(10,2) not null,
-  image_url text,
-  is_active boolean default true,
-  created_at timestamptz default now()
-);
-
---inventory_items table
 CREATE TABLE inventory_items (
     id SERIAL PRIMARY KEY,
+    restaurant_id integer not null references restaurant_profiles(id) on delete cascade,
     name VARCHAR(100) NOT NULL CHECK (name ~ '^[A-Za-z0-9 ]+$'), -- no !@#$, only alphanumeric + spaces
-    unit_id INT NOT NULL REFERENCES units(id) ON DELETE RESTRICT,
+    unit TEXT NOT NULL,
     quantity NUMERIC(12,2) NOT NULL DEFAULT 0,  -- allows fractional quantities (e.g., 0.5 kg)
     reorder_level NUMERIC(12,2) NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT now(),
     updated_at TIMESTAMP DEFAULT now()
 );
 
---inventory_adjustments table
+
 CREATE TABLE inventory_adjustments (
     id SERIAL PRIMARY KEY,
-    item_id INT NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
+    restaurant_id integer not null references restaurant_profiles(id) on delete cascade,
+    item_id INT REFERENCES inventory_items(id) ON DELETE SET NULL,
+    item_name VARCHAR(100),
     direction VARCHAR(10) NOT NULL CHECK (direction IN ('in','out')),
     quantity NUMERIC(12,2) NOT NULL CHECK (quantity > 0),
     reason TEXT,
     created_at TIMESTAMP DEFAULT now()
 );
 
---carts table
-CREATE TABLE carts (
-  id SERIAL PRIMARY KEY,
-  customer_id INTEGER REFERENCES customer_profiles(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- cart_items table
-CREATE TABLE cart_items (
-  id SERIAL PRIMARY KEY,
-  cart_id INTEGER NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
-  menu_item_id INTEGER NOT NULL REFERENCES menu_items(id) ON DELETE CASCADE,
-  quantity INTEGER NOT NULL CHECK (quantity > 0),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  CONSTRAINT cart_item_unique UNIQUE (cart_id, menu_item_id) 
 
 -- Create transactions table
 CREATE TABLE transactions (
@@ -1048,7 +1012,7 @@ CREATE TABLE IF NOT EXISTS food_court_table (
   updated_at  TIMESTAMP DEFAULT NOW()
 );
 
-ALTER TABLE reservations ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP DEFAULT NOW(); 
+
   
 
 -- Time slots master
@@ -1077,8 +1041,7 @@ CREATE TABLE IF NOT EXISTS reservation_blackout_slots (
   CONSTRAINT reservation_blackout_slots_unique UNIQUE (blackout_id, slot_id)
 );
 
--- === RESERVATIONS HEADER ===
-DROP TABLE IF EXISTS reservations CASCADE;
+
 
 CREATE TABLE reservations (
   id               SERIAL PRIMARY KEY,
@@ -1093,8 +1056,6 @@ CREATE TABLE reservations (
 );
 
 
-
-
 -- === BOOKED TABLES ===
 CREATE TABLE IF NOT EXISTS reservation_tables (
   id               BIGSERIAL PRIMARY KEY,
@@ -1104,27 +1065,6 @@ CREATE TABLE IF NOT EXISTS reservation_tables (
   slot_id          INTEGER NOT NULL REFERENCES reservation_time_slots(id) ON DELETE RESTRICT
 );
 
--- Prevent double-booking the same table for the same date/slot
-CREATE UNIQUE INDEX IF NOT EXISTS uq_reservation_tables_table_date_slot
-  ON reservation_tables(table_id, reserved_date, slot_id);
-
-  -- Add fields to support approval workflow
-ALTER TABLE reservations
-  ADD COLUMN IF NOT EXISTS reservation_fee NUMERIC(10,2) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS cancelled_at   TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS refunded_at    TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS cancel_status  TEXT,               -- NULL | 'requested' | 'approved' | 'rejected'
-  ADD COLUMN IF NOT EXISTS cancel_requested_at TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS cancel_reason  TEXT,
-  ADD COLUMN IF NOT EXISTS cancel_decision_at TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS cancel_decision_by INTEGER REFERENCES users(id);
-
--- Helpful indexes
-CREATE INDEX IF NOT EXISTS idx_reservations_cancel_status ON reservations(cancel_status);
-CREATE INDEX IF NOT EXISTS idx_reservations_status ON reservations(status);
-CREATE INDEX IF NOT EXISTS idx_reservations_date ON reservations(reserved_date);
-CREATE INDEX IF NOT EXISTS idx_res_time_slots_start ON reservation_time_slots(start_time);
-CREATE INDEX IF NOT EXISTS idx_reservations_date_slot ON reservations(reserved_date, slot_id);
 
 
 UPDATE reservation_time_slots SET start_time = TIME '10:00' WHERE label ILIKE '%10:00 AM%';
@@ -1176,16 +1116,14 @@ CREATE TABLE order_items (
 );
 
 
--- Messages
 CREATE TABLE messages (
     id SERIAL PRIMARY KEY,
-    sender_id INT NOT NULL REFERENCES users(id),
-    receiver_id INT NOT NULL REFERENCES users(id),
-    order_id INT REFERENCES orders(id),
+    order_id INT,
+    sender VARCHAR(50) NOT NULL,
+    recipient VARCHAR(50) NOT NULL,
     content TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_messages_order ON messages(order_id);
 
 -- carts table
 CREATE TABLE carts (
