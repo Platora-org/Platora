@@ -108,7 +108,7 @@ CREATE TABLE wallets (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Trigger function to auto-update `updated_at`
+-- Trigger function to auto-update updated_at
 CREATE OR REPLACE FUNCTION update_wallets_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN

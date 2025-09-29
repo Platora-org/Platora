@@ -29,8 +29,12 @@ const AdminFoodCourt = lazy(() => import("../components/adminProfileComponents/A
 const CustomerWallet = lazy(() => import("../components/customerProfileComponents/CustomerWalletDashboard"));
 const ReservationForm = lazy(() => import("../components/customerProfileComponents/ReservationForm"));
 const AdminReservationList = lazy(() => import("../components/adminProfileComponents/AdminReservationList"));
-
-
+const Plate = lazy(() => import("../pages/Plate"));
+const CustomerOrders = lazy(() => import("../components/customerProfileComponents/CustomerOrders"))
+const AdminPayoutDashboard = lazy(() => import("../components/adminProfileComponents/AdminPayoutDashboard"));
+const AdminAnalytictsDashboard = lazy(() => import("../components/adminProfileComponents/AdminAnalyticsDashboard"));
+const TransactionList = lazy(() => import("../components/adminProfileComponents/TransactionList"));
+const SecurityAuditLogs = lazy(() => import("../components/adminProfileComponents/SecurityAuditLogs"));
 
 export const appRoutes = [
   {
@@ -38,6 +42,13 @@ export const appRoutes = [
     component: LoginPage,
     requiresAuth: false,
     hideHeader: true
+  },
+   
+  {
+    path: "/plate",
+    component: Plate,
+    requiresAuth: true,
+    allowedRoles: ["customer", "guest"],
   },
   {
     path: "/restaurants",
@@ -92,6 +103,10 @@ export const appRoutes = [
       {
         path: "analysis",
         component: Analysis,
+      },
+      {
+        path: "orders",
+        component: CustomerOrders,
       },
       {
         path: "settings",
@@ -170,7 +185,22 @@ export const appRoutes = [
       { path: "reservations/list", 
         component: AdminReservationList 
       },
-
+      {
+        path: "adminpayouts",
+        component: AdminPayoutDashboard
+      },
+      {
+        path: "walletAnalytics",
+        component: AdminAnalytictsDashboard
+      },
+      {
+        path: "transactions",
+        component: TransactionList
+      },
+      {
+        path: "logsSecurity-audit",
+        component: SecurityAuditLogs
+      },
     ]
   },
 

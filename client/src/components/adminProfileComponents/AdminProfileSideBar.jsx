@@ -112,7 +112,11 @@ const AdminProfileSideBar = ({ onLogout, loggedUser }) => {
       ),
       children: [
         { label: "KYC Management", href: "/admin/kycrequests" },
-        { label: "Audit Logs", href: "/admin/auditlogs" },
+        { label: "Payouts", href: "/admin/adminpayouts" },
+        { label: "Analytics", href: "/admin/walletAnalytics" },
+        { label: "Transactions", href: "/admin/transactions" },
+        { label: "KYC Audit Logs", href: "/admin/auditlogs" },
+        { label: "Security Audit Logs", href: "/admin/logsSecurity-audit"},
       ], 
     },
     {

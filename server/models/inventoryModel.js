@@ -62,6 +62,7 @@ async function adjustQuantity(id, restaurant_id, adjustment) {
   return pool.query(q, [adjustment, id, restaurant_id]);
 }
 
+
 export default {
   create,
   getAll,
