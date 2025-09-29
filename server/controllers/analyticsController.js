@@ -897,7 +897,7 @@ export const generateMonthlyStatement = async (req, res) => {
   }
 };
 
-// Generate statement for selected date range and filters (Admin version) - Professional Design
+// Generate statement for selected date range and filters (Admin version) - Clean Professional Design
 export const generateAdminStatement = async (req, res) => {
   try {
     const { startDate, endDate, transactionType, status } = req.query;
@@ -982,6 +982,19 @@ export const generateAdminStatement = async (req, res) => {
     const rightMargin = pageWidth - 60;
     const contentWidth = rightMargin - leftMargin;
     
+    // Create report ID once
+    // Generate unique ID using timestamp
+    const now = new Date();
+    const timestamp = now.getTime().toString().slice(-6); // Last 6 digits of timestamp
+    const reportId = `AR-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-${timestamp}`; 
+    const generationTime = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    
     // Professional header with emerald theme
     doc.rect(0, 0, pageWidth, 100).fill(primaryColor);
     
@@ -996,17 +1009,17 @@ export const generateAdminStatement = async (req, res) => {
        .text('Digital Wallet & Payment Solutions', leftMargin, 58);
     
     // Admin report title - right aligned
-    doc.fontSize(22)
+    doc.fontSize(20)
        .font('Times-Bold')
-       .text('ADMIN REPORT', rightMargin - 160, 25, { width: 160, align: 'right' });
+       .text('ADMIN REPORT', rightMargin - 200, 30);
     
     doc.fontSize(10)
        .font('Times-Roman')
-       .text('Transaction Analysis', rightMargin - 160, 55, { width: 160, align: 'right' });
+       .text('Transaction Analysis', rightMargin - 200, 55);
     
     let currentY = 130;
     
-    // Report information header - single column layout
+    // Report information header
     doc.fillColor(textDark)
        .fontSize(16)
        .font('Times-Bold')
@@ -1014,7 +1027,7 @@ export const generateAdminStatement = async (req, res) => {
     
     currentY += 25;
     
-    // Single column layout for better alignment
+    // Report information layout
     const labelWidth = 120;
     const valueStartX = leftMargin + labelWidth;
     
@@ -1030,18 +1043,29 @@ export const generateAdminStatement = async (req, res) => {
     
     currentY += 18;
     
-    // Date Range
+    // Report ID
     doc.font('Times-Bold')
        .fillColor(textMedium)
-       .text('Date Range:', leftMargin, currentY);
+       .text('Report ID:', leftMargin, currentY);
     
     doc.font('Times-Roman')
        .fillColor(textDark)
-       .text(`${startDate} to ${endDate}`, valueStartX, currentY);
+       .text(reportId, valueStartX, currentY);
     
     currentY += 18;
     
-    // Transaction Type Filter
+    // Generated Time
+    doc.font('Times-Bold')
+       .fillColor(textMedium)
+       .text('Generated:', leftMargin, currentY);
+    
+    doc.font('Times-Roman')
+       .fillColor(textDark)
+       .text(generationTime, valueStartX, currentY);
+    
+    currentY += 18;
+    
+    // Transaction Type Filter (if applied)
     if (transactionType) {
       doc.font('Times-Bold')
          .fillColor(textMedium)
@@ -1054,7 +1078,7 @@ export const generateAdminStatement = async (req, res) => {
       currentY += 18;
     }
     
-    // Status Filter
+    // Status Filter (if applied)
     if (status) {
       doc.font('Times-Bold')
          .fillColor(textMedium)
@@ -1078,13 +1102,37 @@ export const generateAdminStatement = async (req, res) => {
     
     currentY += 35;
     
-    // Summary statistics calculation
+    // Summary statistics calculation - corrected to match frontend logic
     const totalCoins = transactions.reduce((sum, t) => sum + Math.abs(t.amount_coins || 0), 0);
-    const totalValue = transactions.reduce((sum, t) => sum + (parseFloat(t.amount_money) || 0), 0);
+    
+    // Calculate total value properly with SPEND transactions using coins * 50
+    const totalValue = transactions.reduce((sum, t) => {
+      if (t.transaction_type === 'SPEND') {
+        // For SPEND transactions: coins * 50
+        return sum + (Math.abs(t.amount_coins || 0) * 50);
+      } else if (t.amount_money) {
+        // For other transactions: use existing amount_money
+        return sum + parseFloat(t.amount_money || 0);
+      }
+      return sum;
+    }, 0);
+    
     const purchaseCount = transactions.filter(t => t.transaction_type === 'PURCHASE').length;
     const spendCount = transactions.filter(t => t.transaction_type === 'SPEND').length;
     const refundCount = transactions.filter(t => t.transaction_type === 'REFUND').length;
-    const completedCount = transactions.filter(t => t.status === 'COMPLETED').length;
+    
+    // Calculate coins by transaction type
+    const totalCoinsPurchased = transactions
+      .filter(t => t.transaction_type === 'PURCHASE')
+      .reduce((sum, t) => sum + Math.abs(t.amount_coins || 0), 0);
+    
+    const totalCoinsSpent = transactions
+      .filter(t => t.transaction_type === 'SPEND')
+      .reduce((sum, t) => sum + Math.abs(t.amount_coins || 0), 0);
+    
+    const totalCoinsRefunded = transactions
+      .filter(t => t.transaction_type === 'REFUND')
+      .reduce((sum, t) => sum + Math.abs(t.amount_coins || 0), 0);
     
     // Professional summary section
     doc.fontSize(16)
@@ -1094,17 +1142,24 @@ export const generateAdminStatement = async (req, res) => {
     
     currentY += 25;
     
-    // Summary statistics in professional grid
+    // Calculate platform revenue (commission from SPEND transactions)
+    const platformRevenue = transactions
+      .filter(t => t.transaction_type === 'SPEND')
+      .reduce((sum, t) => sum + (Math.abs(t.amount_coins || 0) * 50 * 0.05), 0); // 5% commission
+    
+    // Summary statistics in professional grid - replaced Total Value with Platform Revenue
+    const netCoinsInCirculation = totalCoinsPurchased + totalCoinsRefunded - totalCoinsSpent;
+    
     const summaryData = [
       { label: 'Total Transactions', value: transactions.length.toLocaleString(), color: accentColor },
       { label: 'Purchase Count', value: purchaseCount.toLocaleString(), color: successColor },
       { label: 'Spend Count', value: spendCount.toLocaleString(), color: '#dc2626' },
       { label: 'Refund Count', value: refundCount.toLocaleString(), color: '#f59e0b' },
-      { label: 'Total Coins', value: totalCoins.toLocaleString(), color: textDark },
-      { label: 'Total Value (LKR)', value: `Rs. ${totalValue.toLocaleString()}`, color: textDark }
+      { label: 'Net Coins Active', value: netCoinsInCirculation.toLocaleString(), color: textDark },
+      { label: 'Platform Revenue', value: `Rs. ${platformRevenue.toLocaleString()}`, color: accentColor }
     ];
     
-    // Display summary in 2x3 grid with better alignment
+    // Display summary in 2x3 grid
     summaryData.forEach((item, index) => {
       const col = index % 2;
       const row = Math.floor(index / 2);
@@ -1131,36 +1186,35 @@ export const generateAdminStatement = async (req, res) => {
     
     currentY += 25;
     
-    // Calculate how many transactions can fit on current page
-    const availableSpace = pageHeight - currentY - 120; // Reserve space for footer
-    const rowHeight = 16;
-    const headerHeight = 25;
+    // Table configuration
+    const rowHeight = 20;
+    const headerHeight = 30;
+    const availableSpace = pageHeight - currentY - 60; // Reserve small bottom margin
     const maxRowsOnFirstPage = Math.floor((availableSpace - headerHeight) / rowHeight);
-    const maxRowsOnSubsequentPages = Math.floor((pageHeight - 120 - headerHeight) / rowHeight);
+    const maxRowsOnSubsequentPages = Math.floor((pageHeight - 90 - headerHeight) / rowHeight);
     
-    let transactionsProcessed = 0;
     let currentPageRows = 0;
     let isFirstPage = true;
     
-    // Function to draw table header (removed restaurant column)
+    // Function to draw table header
     const drawTableHeader = (y) => {
       // Table header background
       doc.rect(leftMargin, y, contentWidth, headerHeight)
          .fill('#f3f4f6')
          .stroke('#9ca3af');
       
-      // Column definitions (removed restaurant column)
-      const colWidths = [80, 150, 80, 90, 100, 85];
+      // Column definitions
+      const colWidths = [70, 110, 70, 60, 90, 115];
       let colX = leftMargin + 10;
       
       doc.fillColor(textDark)
          .fontSize(10)
          .font('Times-Bold');
       
-      const headers = ['Date', 'Customer', 'Type', 'Amount', 'Value (LKR)', 'Status'];
+      const headers = ['Date', 'Customer', 'Type', 'Coins', 'Value (LKR)', 'Status'];
       
       headers.forEach((header, index) => {
-        doc.text(header, colX, y + 8, { 
+        doc.text(header, colX, y + 10, { 
           width: colWidths[index] - 8, 
           align: 'left' 
         });
@@ -1174,14 +1228,15 @@ export const generateAdminStatement = async (req, res) => {
     let tableY = drawTableHeader(currentY);
     currentY = tableY;
     
-    // Process transactions (removed restaurant column)
+    // Process transactions
     transactions.forEach((transaction, index) => {
       const maxRows = isFirstPage ? maxRowsOnFirstPage : maxRowsOnSubsequentPages;
       
       // Check if we need a new page
       if (currentPageRows >= maxRows) {
+        // Add new page
         doc.addPage();
-        currentY = 60;
+        currentY = 60; // Start from top margin on new page
         tableY = drawTableHeader(currentY);
         currentY = tableY;
         currentPageRows = 0;
@@ -1193,8 +1248,8 @@ export const generateAdminStatement = async (req, res) => {
       doc.rect(leftMargin, currentY, contentWidth, rowHeight)
          .fill(rowColor);
       
-      // Column data (removed restaurant column)
-      const colWidths = [80, 150, 80, 90, 100, 85];
+      // Column data
+      const colWidths = [70, 110, 70, 60, 90, 115];
       let colX = leftMargin + 10;
       
       // Date
@@ -1205,13 +1260,15 @@ export const generateAdminStatement = async (req, res) => {
            month: 'short',
            day: 'numeric',
            year: '2-digit'
-         }), colX, currentY + 4);
+         }), colX, currentY + 6);
       colX += colWidths[0];
       
-      // Customer
-      const customerName = (transaction.customer_name || 'Unknown').substring(0, 22) + 
-                          ((transaction.customer_name || '').length > 22 ? '...' : '');
-      doc.text(customerName, colX, currentY + 4, { width: colWidths[1] - 8 });
+      // Customer - full name with ellipsis
+      const customerName = transaction.customer_name || 'Unknown';
+      doc.text(customerName, colX, currentY + 6, { 
+        width: colWidths[1] - 8,
+        ellipsis: true
+      });
       colX += colWidths[1];
       
       // Type with color
@@ -1221,23 +1278,34 @@ export const generateAdminStatement = async (req, res) => {
       doc.fillColor(typeColor)
          .fontSize(9)
          .font('Times-Bold')
-         .text(transaction.transaction_type || 'N/A', colX, currentY + 4);
+         .text(transaction.transaction_type || 'N/A', colX, currentY + 6);
       colX += colWidths[2];
       
-      // Amount
+      // Coins
       doc.fillColor(typeColor)
          .fontSize(9)
          .font('Times-Bold')
-         .text(`${Math.abs(transaction.amount_coins || 0)}`, colX, currentY + 4);
+         .text(`${Math.abs(transaction.amount_coins || 0)}`, colX, currentY + 6);
       colX += colWidths[3];
       
-      // Value
+      // Value with SPEND calculation
+      let valueText = '-';
+      if (transaction.transaction_type === 'SPEND') {
+        // For SPEND transactions: coins * 50
+        const spendValue = Math.abs(transaction.amount_coins || 0) * 50;
+        valueText = `LKR ${spendValue.toFixed(2)}`;
+      } else if (transaction.amount_money) {
+        // For other transactions: use existing amount_money
+        valueText = `${transaction.currency || 'LKR'} ${parseFloat(transaction.amount_money).toFixed(2)}`;
+      }
+      
       doc.fillColor(textDark)
          .fontSize(9)
          .font('Times-Roman')
-         .text(transaction.amount_money ? 
-               `${transaction.currency || 'LKR'} ${parseFloat(transaction.amount_money).toFixed(2)}` : 
-               '-', colX, currentY + 4);
+         .text(valueText, colX, currentY + 6, {
+         width: colWidths[4] - 8,
+         ellipsis: true
+       });
       colX += colWidths[4];
       
       // Status
@@ -1245,62 +1313,13 @@ export const generateAdminStatement = async (req, res) => {
                          transaction.status === 'PENDING' ? warningColor : '#dc2626';
       
       doc.fillColor(statusColor)
-         .fontSize(8)
+         .fontSize(9)
          .font('Times-Bold')
-         .text(transaction.status || 'PENDING', colX, currentY + 5);
+         .text(transaction.status || 'PENDING', colX, currentY + 6);
       
       currentY += rowHeight;
       currentPageRows++;
-      transactionsProcessed++;
     });
-    
-    // Create short report ID
-    const reportId = `AR-${String(Date.now()).slice(-6)}`;
-    
-    // Fixed footer position for A4 compliance
-    const footerStartY = pageHeight - 100;
-    
-    // Professional separator line
-    doc.strokeColor('#9ca3af')
-       .lineWidth(1)
-       .moveTo(leftMargin, footerStartY)
-       .lineTo(rightMargin, footerStartY)
-       .stroke();
-    
-    // Center-aligned thank you message
-    doc.fillColor(accentColor)
-       .fontSize(14)
-       .font('Times-Bold')
-       .text('Thank you for choosing Us', leftMargin, footerStartY + 12, { 
-         width: contentWidth, 
-         align: 'center' 
-       });
-    
-    // Center-aligned footer text
-    doc.fillColor(textMedium)
-       .fontSize(9)
-       .font('Times-Roman')
-       .text('This is an automatically generated administrative report from our digital wallet system.', 
-              leftMargin, footerStartY + 32, { width: contentWidth, align: 'center' });
-    
-    doc.text('For support and inquiries, please contact our customer service team.', 
-             leftMargin, footerStartY + 45, { width: contentWidth, align: 'center' });
-    
-    // Center-aligned generation timestamp
-    doc.fillColor(textLight)
-       .fontSize(8)
-       .font('Times-Roman')
-       .text(`Generated on ${new Date().toLocaleDateString('en-US', {
-         year: 'numeric',
-         month: 'long',
-         day: 'numeric',
-         hour: '2-digit',
-         minute: '2-digit'
-       })}`, leftMargin, footerStartY + 65, { width: contentWidth, align: 'center' });
-    
-    // Center-aligned report details
-    doc.text(`Report: ${reportId} | Period: ${startDate} to ${endDate}`, 
-             leftMargin, footerStartY + 80, { width: contentWidth, align: 'center' });
     
     // Finalize PDF
     doc.end();
@@ -1317,7 +1336,6 @@ export const generateAdminStatement = async (req, res) => {
     }
   }
 };
-
 // Get all transactions for admin with filters
 export const getAdminTransactions = async (req, res) => {
   try {

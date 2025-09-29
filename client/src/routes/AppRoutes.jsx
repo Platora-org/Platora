@@ -32,6 +32,7 @@ const CustomerOrders = lazy(() => import("../components/customerProfileComponent
 const AdminPayoutDashboard = lazy(() => import("../components/adminProfileComponents/AdminPayoutDashboard"));
 const AdminAnalytictsDashboard = lazy(() => import("../components/adminProfileComponents/AdminAnalyticsDashboard"));
 const TransactionList = lazy(() => import("../components/adminProfileComponents/TransactionList"));
+const SecurityAuditLogs = lazy(() => import("../components/adminProfileComponents/SecurityAuditLogs"));
 
 export const appRoutes = [
   {
@@ -190,6 +191,10 @@ export const appRoutes = [
       {
         path: "transactions",
         component: TransactionList
+      },
+      {
+        path: "logsSecurity-audit",
+        component: SecurityAuditLogs
       },
     ]
   },
