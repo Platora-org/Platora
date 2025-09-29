@@ -5,7 +5,6 @@ import pool from "../config/db.js";
 
 
 
-
 export async function getSlotByLabel(label) {
   const { rows } = await pool.query(
     `SELECT id, label, sort_idx

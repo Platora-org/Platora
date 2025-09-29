@@ -7,13 +7,13 @@ import reservationController from "../controllers/reservationController.js";
 const router = express.Router();
 
 // ---- public-ish (still needs auth for your app) ----
-router.get("/time-slots", verifyJWT, reservationController.listTimeSlots);
+router.get("/time-slots", verifyJWT,  checkRole("customer"),reservationController.listTimeSlots);
 router.post("/check-availability", verifyJWT, checkRole("customer"), reservationController.checkAvailability);
 
 // ---- customer actions ----
 router.get("/mine", verifyJWT, checkRole("customer"), reservationController.listMyReservations);
 
-
+router.get("/occupied",verifyJWT, checkRole(["admin", "customer"]), reservationController.occupiedTables);
 
 // create / read / update / cancel
 router.post("/", verifyJWT, checkRole("customer"), reservationController.createReservationHandler);

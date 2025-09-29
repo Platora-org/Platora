@@ -1,3 +1,5 @@
+
+import pool from "../config/db.js";
 // server/controllers/reservationController.js
 import {
   getSlotByLabel,
@@ -21,16 +23,12 @@ const reservationController = {
   /* GET /api/reservations/time-slots  */
   async listTimeSlots(req, res) {
     try {
-      const { rows } = await req.app.get("db").query(
-        `SELECT id, label, sort_idx
-           FROM reservation_time_slots
-          ORDER BY sort_idx ASC, id ASC`
-      );
-      res.json({ slots: rows });
-    } catch (e) {
-      console.error(e);
-      res.status(500).json({ message: "Failed to load time slots" });
-    }
+ const result = await pool.query("SELECT * FROM reservation_time_slots ORDER BY start_time ASC");
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching time slots:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
   },
 
   /* POST /api/reservations/check-availability */

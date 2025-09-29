@@ -50,6 +50,7 @@ function BlackoutForm() {
       }
     })();
   }, []);
+  
 
   // Fetch upcoming blackouts (10-day window)
   const refresh = async () => {
@@ -232,7 +233,7 @@ const saveLocal = (tables) => {
 const Legend = () => (
   <div className="flex flex-wrap items-center gap-3 text-sm">
     <span className="inline-flex items-center gap-2">
-      <span className="w-3 h-3 rounded-full bg-gray-900 inline-block" />
+      <span className="w-3 h-3 rounded-full dark:bg-gray-700 inline-block" />
       Table
     </span>
     <span className="inline-flex items-center gap-2">
@@ -242,16 +243,19 @@ const Legend = () => (
   </div>
 );
 
-const TableNode = ({ table }) => (
+const TableNode = ({ table, occupied, selected, selectable, onSelect }) => (
   <div
-    className="rounded- px-4 py-2 text-sm font-medium shadow-sm bg-gray-900 text-white dark:bg-gray-700"
+    className={`rounded px-4 py-2 text-sm font-medium shadow-sm
+      ${occupied ? "bg-red-600 cursor-not-allowed" : "bg-gray-900 hover:bg-green-700 cursor-pointer"}
+      ${selected ? "ring-2 ring-blue-400" : ""}
+      text-white dark:bg-gray-700`}
     style={{ width: 130, textAlign: "center" }}
     title={`Table ${table.table_code || table.id} • ${table.capacity} ppl • ${table.price}coins`}
+    onClick={() => !occupied && selectable && onSelect?.(table.id)}
   >
     <div className="text-xs opacity-80">{table.table_code || table.id}</div>
     <div className="text-[11px] opacity-70">
-      {table.capacity} people · 
-      {table.price}coins
+      {table.capacity} people · {table.price}coins
     </div>
   </div>
 );
@@ -275,6 +279,7 @@ function Toast({ open, type = "success", message, onClose }) {
 /* ---------- main ---------- */
 export default function AdminFoodCourt() {
   const [tables, setTables] = useState([]);
+  const [occupiedIds, setOccupiedIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [savingPos, setSavingPos] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -335,6 +340,24 @@ export default function AdminFoodCourt() {
     return () => { mounted = false; };
   }, []);
 
+  // Fetch occupied tables for today/default slot (on mount)
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const defaultSlotId = 1; // you can make this dynamic
+    (async () => {
+      try {
+        const { data } = await api.get("/api/reservations/occupied", {
+          params: { date: today, slot_id: defaultSlotId },
+        });
+        setOccupiedIds((data?.occupied || []).map(Number));
+      } catch (err) {
+        console.error("Failed to fetch occupied tables", err);
+        setOccupiedIds([]);
+      }
+    })();
+  }, []);
+
+
   const persistPosition = useCallback(async (tableId, x, y) => {
     try {
       await api.patch(`/api/food-court/tables/${tableId}/position`, { x, y });
@@ -343,6 +366,8 @@ export default function AdminFoodCourt() {
       saveLocal(tables.map((t) => (t.id === tableId ? { ...t, x, y } : t)));
     }
   }, [tables]);
+
+
 
   // After drag ends
   const onDragStop = (id, e, data) => {
@@ -488,10 +513,20 @@ export default function AdminFoodCourt() {
         {loading && <div className="absolute inset-0 flex items-center justify-center text-sm opacity-80">Loading layout…</div>}
         {!loading && tables.map((t) => {
           const nodeRef = getNodeRef(t.id);
+          
+          const occupied = occupiedIds.includes(Number(t.id));
           return (
-            <Draggable key={t.id} nodeRef={nodeRef} defaultPosition={{ x: t.x, y: t.y }} grid={[10, 10]} bounds="parent" onStop={(e, data) => onDragStop(t.id, e, data)}>
-              <div ref={nodeRef} className="absolute" style={{ touchAction: "none", cursor: "grab" }}>
-                <TableNode table={t} />
+            <Draggable
+              key={t.id}
+              nodeRef={nodeRef}
+              defaultPosition={{ x: t.x, y: t.y }}
+              grid={[10, 10]}
+              bounds="parent"
+              onStop={(e, data) => onDragStop(t.id, e, data)}
+              disabled={occupied} // ✅ prevent drag if occupied
+            >
+              <div ref={nodeRef} className="absolute" style={{ touchAction: "none", cursor: occupied ? "not-allowed" : "grab" }}>
+                <TableNode table={t} occupied={occupied} />
               </div>
             </Draggable>
           );

@@ -46,6 +46,7 @@ const TableNode = ({ table, occupied, selected, selectable, onSelect }) => {
   );
 };
 
+
 export default function TableAvailability() {
   const { state } = useLocation(); // expects { date, time, guests }
   const navigate = useNavigate();
@@ -124,7 +125,12 @@ export default function TableAvailability() {
         const { data } = await axiosInstance.get("/api/reservations/occupied", {
           params: { date, slot_id: slotId }
         });
-        if (!cancel) setOccupiedIds((data?.occupied || []).map(Number));
+        if (!cancel){
+           setOccupiedIds((data?.occupied || []).map(Number));
+           console.log("Occupied IDs:", data?.occupied || [])
+           console.log("DATE = ", date, "SLOT ID = ", slotId);
+
+        }
       } catch (e) {
         console.error("Failed to fetch occupied tables", e);
         if (!cancel) setOccupiedIds([]);
@@ -199,11 +205,11 @@ export default function TableAvailability() {
             Selected
           </span>
           <span className="inline-flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-gray-900 inline-block" />
+            <span className="w-3 h-3 rounded-full dark:bg-gray-700 inline-block" />
             Available
           </span>
           <span className="inline-flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-rose-600 inline-block" />
+            <span className="w-3 h-3 rounded-full bg-gray-300 inline-block" />
             Occupied
           </span>
         </div>

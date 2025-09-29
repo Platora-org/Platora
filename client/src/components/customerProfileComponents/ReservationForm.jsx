@@ -47,6 +47,9 @@ export default function ReservationForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [confirmationMsg, setConfirmationMsg] = useState("");
+  const [policyAccepted, setPolicyAccepted] = useState(false);
+  const [detailsConfirmed, setDetailsConfirmed] = useState(false);
+
 
 useEffect(() => {
  
@@ -175,7 +178,7 @@ useEffect(() => {
           </section>
 
           <div className="flex items-start gap-2">
-            <input type="checkbox" id="policy" required className="mt-1" />
+            <input type="checkbox" id="policy" className="mt-1" checked={policyAccepted}  onChange={(e) => setPolicyAccepted(e.target.checked)}/>
             <label htmlFor="policy" className="text-sm opacity-90">
               I accept the reservation policy and agree to the terms & conditions.
             </label>
@@ -183,10 +186,13 @@ useEffect(() => {
 
           <button
             type="button"
-            onClick={() => setConfirmationMsg("Details confirmed. Review the summary on the right before submitting.")}
-            className="px-6 py-3 rounded-lg bg-gray-900 text-white hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600"
-          >
-            Confirm Details
+            disabled={!policyAccepted} 
+           onClick={() => {
+            setDetailsConfirmed(true); // NEW ✅
+            setConfirmationMsg("Details confirmed. Review the summary on the right before submitting.");
+              }}
+          className={`px-6 py-3 rounded-lg text-white ${!policyAccepted? "bg-gray-400 cursor-not-allowed" : "bg-gray-900 hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600"}`}>
+         Confirm Details
           </button>
         </div>
 
@@ -209,11 +215,14 @@ useEffect(() => {
           {error && <p className="text-sm text-red-500">{error}</p>}
 
           <button
-            disabled={loading || submitting}
+            disabled={loading || submitting || !detailsConfirmed}
             onClick={handleSubmit}
-            className={`w-full px-6 py-3 rounded-lg text-white ${loading || submitting ? "bg-gray-400 cursor-not-allowed" : "bg-emerald-500 hover:bg-emerald-600"
-              }`}
-          >
+           className={`w-full px-6 py-3 rounded-lg text-white ${
+            loading || submitting || !detailsConfirmed
+            ? "bg-gray-400 cursor-not-allowed"
+            : "bg-emerald-500 hover:bg-emerald-600"
+  }`}
+>
             {submitting ? "Processing…" : "Reserve Table"}
           </button>
         </aside>

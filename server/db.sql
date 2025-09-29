@@ -985,8 +985,6 @@ CREATE TABLE IF NOT EXISTS food_court_table (
   updated_at  TIMESTAMP DEFAULT NOW()
 );
 
-ALTER TABLE reservations ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP DEFAULT NOW(); 
-  
 
 -- Time slots master
 CREATE TABLE IF NOT EXISTS reservation_time_slots (
@@ -1030,7 +1028,7 @@ CREATE TABLE reservations (
 );
 
 
-
+ALTER TABLE reservations ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP DEFAULT NOW(); 
 -- === BOOKED TABLES ===
 CREATE TABLE IF NOT EXISTS reservation_tables (
   id               BIGSERIAL PRIMARY KEY,
@@ -1040,29 +1038,6 @@ CREATE TABLE IF NOT EXISTS reservation_tables (
   slot_id          INTEGER NOT NULL REFERENCES reservation_time_slots(id) ON DELETE RESTRICT
 );
 
--- Prevent double-booking the same table for the same date/slot
-CREATE UNIQUE INDEX IF NOT EXISTS uq_reservation_tables_table_date_slot
-  ON reservation_tables(table_id, reserved_date, slot_id);
-
-  -- Add fields to support approval workflow
-ALTER TABLE reservations
-  ADD COLUMN IF NOT EXISTS reservation_fee NUMERIC(10,2) DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS cancelled_at   TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS refunded_at    TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS cancel_status  TEXT,               -- NULL | 'requested' | 'approved' | 'rejected'
-  ADD COLUMN IF NOT EXISTS cancel_requested_at TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS cancel_reason  TEXT,
-  ADD COLUMN IF NOT EXISTS cancel_decision_at TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS cancel_decision_by INTEGER REFERENCES users(id);
-
--- Helpful indexes
-CREATE INDEX IF NOT EXISTS idx_reservations_cancel_status ON reservations(cancel_status);
-CREATE INDEX IF NOT EXISTS idx_reservations_status ON reservations(status);
-CREATE INDEX IF NOT EXISTS idx_reservations_date ON reservations(reserved_date);
-CREATE INDEX IF NOT EXISTS idx_res_time_slots_start ON reservation_time_slots(start_time);
-CREATE INDEX IF NOT EXISTS idx_reservations_date_slot ON reservations(reserved_date, slot_id);
-
-
 UPDATE reservation_time_slots SET start_time = TIME '10:00' WHERE label ILIKE '%10:00 AM%';
 UPDATE reservation_time_slots SET start_time = TIME '12:30' WHERE label ILIKE '%12:30 PM%';
 UPDATE reservation_time_slots SET start_time = TIME '15:00' WHERE label ILIKE '%3:00 PM%';
@@ -1070,141 +1045,7 @@ UPDATE reservation_time_slots SET start_time = TIME '17:30' WHERE label ILIKE '%
 UPDATE reservation_time_slots SET start_time = TIME '18:00' WHERE label ILIKE '%6:00 PM%';
 
 
-  CREATE SEQUENCE IF NOT EXISTS reservation_seq START 1;
+ 
 
-  /*RESERVATIONS CORE
-   Depends on:
-     - users(id)
-     - food_court_table(id)
-     - reservation_time_slots(id)
-   ========================================================= */
 
-/* 1) Enum for reservation status (idempotent) */
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'reservation_status') THEN
-    CREATE TYPE reservation_status AS ENUM ('pending','confirmed','cancelled','completed','no_show');
-  END IF;
-END $$;
-
-/* 2) reservations table */
-CREATE TABLE IF NOT EXISTS reservations (
-  id             SERIAL PRIMARY KEY,
-  customer_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  reserved_date  DATE NOT NULL,
-  time_slot_id   INTEGER NOT NULL REFERENCES reservation_time_slots(id) ON DELETE RESTRICT,
-  guests         INTEGER NOT NULL CHECK (guests > 0),
-  total_fee      NUMERIC(10,2) NOT NULL DEFAULT 0,
-  notes          TEXT,
-  status         reservation_status NOT NULL DEFAULT 'pending',
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- Helpful indexes
-CREATE INDEX IF NOT EXISTS idx_reservations_date         ON reservations(reserved_date);
-CREATE INDEX IF NOT EXISTS idx_reservations_slot         ON reservations(time_slot_id);
-CREATE INDEX IF NOT EXISTS idx_reservations_customer     ON reservations(customer_user_id);
-CREATE INDEX IF NOT EXISTS idx_reservations_date_slot    ON reservations(reserved_date, time_slot_id);
-
-/* 3) Trigger to auto-touch updated_at */
-CREATE OR REPLACE FUNCTION trg_set_timestamp()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
-BEGIN
-  NEW.updated_at := NOW();
-  RETURN NEW;
-END $$;
-
-DROP TRIGGER IF EXISTS set_timestamp_on_reservations ON reservations;
-CREATE TRIGGER set_timestamp_on_reservations
-BEFORE UPDATE ON reservations
-FOR EACH ROW
-EXECUTE FUNCTION trg_set_timestamp();
-
-/* 4) Junction: which table(s) are booked by a reservation
-      We also store (reserved_date, time_slot_id) and (is_active) so we
-      can enforce a partial unique index without subqueries. */
-CREATE TABLE IF NOT EXISTS reservation_tables (
-  id             SERIAL PRIMARY KEY,
-  reservation_id INTEGER NOT NULL REFERENCES reservations(id) ON DELETE CASCADE,
-  table_id       INTEGER NOT NULL REFERENCES food_court_table(id) ON DELETE RESTRICT,
-
-  -- Copied from parent reservation for constraint/indexing
-  reserved_date  DATE    NOT NULL,
-  time_slot_id   INTEGER NOT NULL,
-
-  -- Set true for 'pending'/'confirmed', false otherwise (kept in sync by triggers)
-  is_active      BOOLEAN NOT NULL DEFAULT TRUE,
-
-  -- Same table cannot be added twice to the same reservation
-  UNIQUE (reservation_id, table_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_resv_tables_resv_id        ON reservation_tables(reservation_id);
-CREATE INDEX IF NOT EXISTS idx_resv_tables_table_id       ON reservation_tables(table_id);
-CREATE INDEX IF NOT EXISTS idx_resv_tables_date_slot      ON reservation_tables(reserved_date, time_slot_id);
-CREATE INDEX IF NOT EXISTS idx_resv_tables_active_flag    ON reservation_tables(is_active);
-
-/* 5) NO DOUBLE-BOOKING:
-      Only one active booking per (table_id, date, slot).
-      Using a partial unique index with an immutable predicate. */
-CREATE UNIQUE INDEX IF NOT EXISTS uniq_active_table_date_slot
-  ON reservation_tables (table_id, reserved_date, time_slot_id)
-  WHERE is_active;
-
-/* 6) Keep reservation_tables in sync with its parent (date/slot/is_active) */
-CREATE OR REPLACE FUNCTION reservation_tables_sync_from_parent()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
-DECLARE
-  p_date DATE;
-  p_slot INTEGER;
-  p_status reservation_status;
-BEGIN
-  SELECT r.reserved_date, r.time_slot_id, r.status
-    INTO p_date, p_slot, p_status
-  FROM reservations r
-  WHERE r.id = NEW.reservation_id;
-
-  IF p_date IS NULL OR p_slot IS NULL THEN
-    RAISE EXCEPTION 'Parent reservation % is missing date or slot', NEW.reservation_id;
-  END IF;
-
-  NEW.reserved_date := p_date;
-  NEW.time_slot_id  := p_slot;
-  NEW.is_active     := (p_status IN ('pending','confirmed'));
-
-  RETURN NEW;
-END $$;
-
--- before INSERT/UPDATE of reservation_id on reservation_tables
-DROP TRIGGER IF EXISTS trg_resv_tables_sync_bi ON reservation_tables;
-CREATE TRIGGER trg_resv_tables_sync_bi
-BEFORE INSERT OR UPDATE OF reservation_id
-ON reservation_tables
-FOR EACH ROW
-EXECUTE FUNCTION reservation_tables_sync_from_parent();
-
-/* 7) When a reservation changes (date, slot, status), push updates to children */
-CREATE OR REPLACE FUNCTION reservation_push_changes_to_children()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
-DECLARE
-  active_now BOOLEAN;
-BEGIN
-  active_now := (NEW.status IN ('pending','confirmed'));
-
-  -- Sync children with new parent fields
-  UPDATE reservation_tables t
-     SET reserved_date = NEW.reserved_date,
-         time_slot_id  = NEW.time_slot_id,
-         is_active     = active_now
-   WHERE t.reservation_id = NEW.id;
-
-  RETURN NEW;
-END $$;
-
-DROP TRIGGER IF EXISTS trg_reservation_push_updates ON reservations;
-CREATE TRIGGER trg_reservation_push_updates
-AFTER UPDATE OF reserved_date, time_slot_id, status
-ON reservations
-FOR EACH ROW
-EXECUTE FUNCTION reservation_push_changes_to_children();
+  

@@ -149,7 +149,7 @@ export default function AdminReservationList() {
       <p className="text-sm opacity-80 mb-4">
         View all customer reservations. Cancellations appear with refund eligibility based on the 24-hour rule.
       </p>
-
+<br></br>
       {/* Filter section with labels */}
       <div className="mb-4 grid grid-cols-1 md:grid-cols-4 gap-3">
         <div className="flex flex-col">
@@ -192,6 +192,7 @@ export default function AdminReservationList() {
             onChange={(e) => setTo(e.target.value)}
             className="w-full rounded-lg border px-3 py-2 bg-white dark:bg-gray-800 dark:border-gray-700"
           />
+         
         </div>
       </div>
 
@@ -203,6 +204,7 @@ export default function AdminReservationList() {
         <Badge kind="warn">Eligible for refund</Badge>
         <Badge kind="info">Refunded</Badge>
       </div>
+      <br></br>
 
       <div className="rounded-xl border bg-white dark:bg-gray-800 dark:border-gray-700 overflow-hidden">
         <div className="min-w-full overflow-x-auto">
@@ -256,7 +258,7 @@ export default function AdminReservationList() {
                       <div className="font-medium">{r.customer_name || "—"}</div>
                       <div className="opacity-70">{r.customer_email || ""}</div>
                     </td>
-                    <td className="px-4 py-3">{r.reserved_date}</td>
+                    <td className="px-4 py-3">{new Date(r.reserved_date).toISOString().split("T")[0]}</td>
                     <td className="px-4 py-3">{r.slot_label || "—"}</td>
                     <td className="px-4 py-3">{r.guests}</td>
                     <td className="px-4 py-3">{tables || "—"}</td>

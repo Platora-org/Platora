@@ -47,7 +47,8 @@ export default function ReservationList() {
           <thead className="bg-gray-50 dark:bg-gray-800/40">
             <tr className="text-left">
               <th className="px-4 py-3">UID</th>
-              <th className="px-4 py-3">Date & Time</th>
+              <th className="px-4 py-3">Date</th>
+               <th className="px-4 py-3">Time</th>
               <th className="px-4 py-3">Guests</th>
               <th className="px-4 py-3">Tables</th>
               <th className="px-4 py-3">Status</th>
@@ -58,7 +59,8 @@ export default function ReservationList() {
             {rows.map((r) => (
               <tr key={r.id} className="hover:bg-gray-50/60 dark:hover:bg-gray-800/30">
                 <td className="px-4 py-3 font-mono">{r.id}</td>
-                <td className="px-4 py-3">{r.reserved_date} — {r.slot_label}</td>
+                <td className="px-4 py-3">{new Date(r.reserved_date).toISOString().split("T")[0]}</td>
+                <td className="px-4 py-3">{r.slot_label}</td>
                 <td className="px-4 py-3">{r.guests}</td>
                 <td className="px-4 py-3">{(r.tables || []).map(t => t.table_code).join(", ")}</td>
                 <td className="px-4 py-3">
