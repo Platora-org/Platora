@@ -5,17 +5,19 @@ export const getAllPendingPayouts = async () => {
   const query = `
     SELECT 
       re.restaurant_id,
-      rp.name as restaurant_name,
-      rp.email as restaurant_email,
-      rp.bank_account_number,
-      rp.bank_name,
+      rp.restaurant_name,
+      u.email as restaurant_email,
+      kr.bank_account_number,
+      kr.bank_name,
       COUNT(re.id) as transaction_count,
       SUM(re.net_coins) as total_earnings,
       SUM(re.net_coins * 50) as amount_lkr
     FROM restaurant_earnings re
     JOIN restaurant_profiles rp ON re.restaurant_id = rp.id
+    JOIN users u ON rp.user_id = u.id
+    LEFT JOIN kyc_requests kr ON kr.restaurant_id = u.id AND kr.status = 'APPROVED'
     WHERE re.payout_status = 'pending'
-    GROUP BY re.restaurant_id, rp.name, rp.email, rp.bank_account_number, rp.bank_name
+    GROUP BY re.restaurant_id, rp.restaurant_name, u.email, kr.bank_account_number, kr.bank_name
     ORDER BY total_earnings DESC
   `;
   
@@ -77,12 +79,13 @@ export const getPayoutHistory = async (filters = {}) => {
   let query = `
     SELECT 
       ph.*,
-      rp.name as restaurant_name,
-      rp.email as restaurant_email,
-      u.first_name || ' ' || u.last_name as processed_by_name
+      rp.restaurant_name,
+      u.email as restaurant_email,
+      admin_user.first_name || ' ' || admin_user.last_name as processed_by_name
     FROM payout_history ph
     JOIN restaurant_profiles rp ON ph.restaurant_id = rp.id
-    LEFT JOIN users u ON ph.processed_by = u.id
+    JOIN users u ON rp.user_id = u.id
+    LEFT JOIN users admin_user ON ph.processed_by = admin_user.id
     WHERE 1=1
   `;
   

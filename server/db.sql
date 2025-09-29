@@ -108,7 +108,7 @@ CREATE TABLE wallets (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Trigger function to auto-update `updated_at`
+-- Trigger function to auto-update updated_at
 CREATE OR REPLACE FUNCTION update_wallets_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -1031,6 +1031,7 @@ CREATE TABLE reservations (
 
 
 
+
 -- === BOOKED TABLES ===
 CREATE TABLE IF NOT EXISTS reservation_tables (
   id               BIGSERIAL PRIMARY KEY,
@@ -1208,3 +1209,71 @@ AFTER UPDATE OF reserved_date, time_slot_id, status
 ON reservations
 FOR EACH ROW
 EXECUTE FUNCTION reservation_push_changes_to_children();
+
+CREATE TABLE recipes (
+    id SERIAL PRIMARY KEY,
+    menu_item_id INT NOT NULL REFERENCES menu_items(id) ON DELETE CASCADE,
+    inventory_item_id INT NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
+    quantity_required DECIMAL(10,2) NOT NULL CHECK (quantity_required > 0),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (menu_item_id, inventory_item_id) -- prevent duplicate ingredient per recipe
+);
+
+--orders table
+CREATE TABLE orders (
+  id SERIAL PRIMARY KEY,
+  customer_id INTEGER REFERENCES customer_profiles(id) ON DELETE CASCADE,
+  cart_id INTEGER REFERENCES carts(id) ON DELETE SET NULL,
+  status VARCHAR(20) DEFAULT 'pending', -- pending, completed, cancelled
+  total_amount NUMERIC(10,2) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE restaurant_orders (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+  restaurant_id INTEGER REFERENCES restaurant_profiles(id) ON DELETE CASCADE,
+  status VARCHAR(20) DEFAULT 'pending', -- pending, accepted, denied, preparing, ready, delivered
+  subtotal NUMERIC(10,2) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE order_items (
+  id SERIAL PRIMARY KEY,
+  restaurant_order_id INTEGER REFERENCES restaurant_orders(id) ON DELETE CASCADE,
+  menu_item_id INTEGER REFERENCES menu_items(id) ON DELETE CASCADE,
+  quantity INTEGER NOT NULL CHECK (quantity > 0),
+  price NUMERIC(10,2) NOT NULL, -- store price at the time of order
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Messages
+CREATE TABLE messages (
+    id SERIAL PRIMARY KEY,
+    sender_id INT NOT NULL REFERENCES users(id),
+    receiver_id INT NOT NULL REFERENCES users(id),
+    order_id INT REFERENCES orders(id),
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX idx_messages_order ON messages(order_id);
+
+-- carts table
+CREATE TABLE carts (
+  id SERIAL PRIMARY KEY,
+  customer_id INTEGER REFERENCES customer_profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- cart_items table
+CREATE TABLE cart_items (
+  id SERIAL PRIMARY KEY,
+  cart_id INTEGER NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
+  menu_item_id INTEGER NOT NULL REFERENCES menu_items(id) ON DELETE CASCADE,
+  quantity INTEGER NOT NULL CHECK (quantity > 0),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT cart_item_unique UNIQUE (cart_id, menu_item_id) -- ✅ correct uniqueness
+);

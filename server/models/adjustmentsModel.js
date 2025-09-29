@@ -8,13 +8,22 @@ async function create({ restaurant_id, item_id, item_name, direction, quantity, 
   return pool.query(q, [restaurant_id, item_id, item_name, direction, quantity, reason]);
 }
 
-// List adjustments for a specific item within a restaurant
-async function listForItem(restaurant_id, item_id) {
+// List all adjustments for a restaurant (ignoring item_id)
+async function listForRestaurant(restaurant_id) {
   const q = `SELECT id, restaurant_id, item_id, item_name, direction, quantity, reason, created_at
              FROM inventory_adjustments
-             WHERE restaurant_id = $1 AND item_id = $2
+             WHERE restaurant_id = $1
              ORDER BY created_at DESC`;
-  return pool.query(q, [restaurant_id, item_id]);
+  return pool.query(q, [restaurant_id]);
 }
 
-export default { create, listForItem };
+// List all adjustments for a restaurant (ignoring item_id)
+async function listForRestaurantAsc(restaurant_id) {
+  const q = `SELECT id, restaurant_id, item_id, item_name, direction, quantity, reason, created_at
+             FROM inventory_adjustments
+             WHERE restaurant_id = $1
+             ORDER BY created_at ASC`;
+  return pool.query(q, [restaurant_id]);
+}
+
+export default { create, listForRestaurant, listForRestaurantAsc };

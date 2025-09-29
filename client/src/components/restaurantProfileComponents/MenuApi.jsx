@@ -74,14 +74,12 @@ export const api = {
     return axiosInstance.patch(`/restaurants/inventory/${id}/adjust`, payload);
   },
   async listRecipe(menuItemId) {
-    if (menuItemId === "m-1") {
-      return [
-        { inventory_id: "i-1", quantity: 250, unit: "g" },
-        { inventory_id: "i-3", quantity: 50, unit: "g" },
-        { inventory_id: "i-2", quantity: 200, unit: "g" },
-      ];
-    }
-    return [];
+    const res = await axiosInstance.get(`api/recipes/${menuItemId}`);
+    return res.data;
   },
-  async saveRecipe(menuItemId, ingredients) { return { menu_item_id: menuItemId, ingredients }; },
+
+  async saveRecipe(menuItemId, ingredients) {
+    const res = await axiosInstance.post(`api/recipes/${menuItemId}`, { ingredients });
+    return res.data;
+  },
 };
