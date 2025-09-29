@@ -2,10 +2,16 @@ import React, { useState } from "react";
 import { Outlet } from "react-router-dom";
 import RestaurantProfileSideBar from "../components/restaurantProfileComponents/RestaurantProfileSideBar";
 import { useAuth } from '../utils/AuthContext';
+import ChatBox from "../components/ChatBox";
 
 const CustomerProfile = () => {
   const { logout, user } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  <ChatBox
+  orderId={order.id}
+  recipientEmail={order.customer_email} // the other party
+/>
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">

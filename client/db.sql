@@ -163,6 +163,7 @@ CREATE INDEX idx_kyc_audit_action ON kyc_audit_logs(action);
 CREATE INDEX idx_kyc_audit_created ON kyc_audit_logs(created_at);
 
 
+
 CREATE TABLE inventory_items (
     id SERIAL PRIMARY KEY,
     restaurant_id integer not null references restaurant_profiles(id) on delete cascade,
@@ -173,6 +174,7 @@ CREATE TABLE inventory_items (
     created_at TIMESTAMP DEFAULT now(),
     updated_at TIMESTAMP DEFAULT now()
 );
+
 
 CREATE TABLE inventory_adjustments (
     id SERIAL PRIMARY KEY,

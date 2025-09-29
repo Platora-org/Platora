@@ -40,6 +40,7 @@ const AdminPayoutDashboard = lazy(() => import("../components/adminProfileCompon
 const AdminAnalytictsDashboard = lazy(() => import("../components/adminProfileComponents/AdminAnalyticsDashboard"));
 const TransactionList = lazy(() => import("../components/adminProfileComponents/TransactionList"));
 const SecurityAuditLogs = lazy(() => import("../components/adminProfileComponents/SecurityAuditLogs"));
+const Chat = lazy(() => import("../pages/chat"));
 
 
 export const appRoutes = [
@@ -243,6 +244,14 @@ export const appRoutes = [
     requiresAuth: true,
     allowedRoles: ["customer"],
   },
+
+
+  {
+  path: "/chat",
+  component: Chat,
+  requiresAuth: false,   // or false if you want it open to anyone
+  allowedRoles: [], // adjust depending on who can chat
+},
 
 
 ]

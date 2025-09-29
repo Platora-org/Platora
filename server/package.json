@@ -6,6 +6,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon index.js"
+
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+
   },
   "author": "",
   "license": "ISC",
@@ -22,6 +26,7 @@
     "express-validator": "^7.2.1",
     "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.2",
+
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.6",
@@ -33,5 +38,13 @@
     "puppeteer": "^24.22.2",
     "sequelize": "^6.37.7",
     "stripe": "^18.5.0"
+
+    "nodemon": "^3.1.10",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "passport-local": "^1.0.0",
+    "pg": "^8.16.3",
+    "socket.io": "^4.8.1"
+
   }
 }

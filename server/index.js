@@ -5,9 +5,10 @@ import path from "path";
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
-import {configurePassport} from './config/passport.js';
+import { configurePassport } from './config/passport.js';
 import authRoutes from './routes/authRoutes.js';
 import customerProfileRoutes from './routes/customerProfileRoutes.js';
+
 import adminProfileRoutes from './routes/adminProfileRoutes.js'
 import kycRoutes from './routes/kycRoutes.js';
 import auditRoutes from './routes/auditRoutes.js';
@@ -35,11 +36,17 @@ import recipeRoutes from './routes/recipeRoutes.js';
 import restaurantProfileRoutes from './routes/restaurantProfileRoutes.js'; 
 import securutyAuditRoutes from './routes/securityAuditRoutes.js';
 
+import adminProfileRoutes from './routes/adminProfileRoutes.js';
 
-const app = express();
-const port = 3000;
+
 
 dotenv.config();
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+
+
 
 app.use(cors({
   origin: 'http://localhost:5173', // React frontend
@@ -134,8 +141,12 @@ app.use((req, res) => {
 
 
 
+app.get('/test', (req, res) => {
+  res.json({ message: "Server is working!" });
+});
 
 app.listen(port, () => {
-    console.log(`Server running on port ${3000}`);
-})
+  console.log(`Server running on port ${port}`);
+});
+
 
