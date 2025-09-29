@@ -62,3 +62,11 @@ export async function deleteMenuItem(id, restaurant_id) {
   return result.rows[0];
 }
 
+export async function getRestaurantIdFromMenu(menuid) {
+  const result = await pool.query(
+    `SELECT restaurant_id from menu_items WHERE id = $1`,
+    [menuid]
+  );
+  return result.rows[0];
+}
+

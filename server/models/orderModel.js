@@ -21,8 +21,8 @@ export async function createOrder(customerId, cartId) {
     // 2. Create master order
     const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
     const orderRes = await client.query(
-      "INSERT INTO orders (customer_id, cart_id, total_amount) VALUES ($1,$2,$3) RETURNING *",
-      [customerId, cartId, total]
+      "INSERT INTO orders (customer_id, total_amount) VALUES ($1,$2) RETURNING *",
+      [customerId, total]
     );
     const order = orderRes.rows[0];
 

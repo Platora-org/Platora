@@ -1,6 +1,7 @@
 import pool from "../config/db.js";
 import * as WalletModel from "../models/walletModel.js";
 import * as TransactionModel from "../models/transactionModel.js";
+import * as menuModel from "../models/menuModel.js"
 import * as WalletService from "../services/walletService.js";
 import * as RestaurantEarningsModel from '../models/restaurantEarningsModel.js';
 import { 
@@ -1012,21 +1013,53 @@ export const checkPaymentStatus = async (req, res) => {
   }
 };
 
+export const walletCheck = async (req, res) => {
+  const userId = req.user.id;
+  const {
+      coins
+    } = req.body;
+
+  const hasSufficient = await WalletModel.hasSufficientBalance(userId, coins);
+  const client = await pool.connect();
+  if (!hasSufficient) {
+    await client.query("ROLLBACK");
+    return res.status(400).json({
+      success: false,
+      message: "Insufficient coin balance",
+  });
+ }
+return res.status(200).json({
+      success: true,
+      message: "Sufficient coin balance",
+  });
+
+};
+
 // Spend coins
 export const spendCoins = async (req, res) => {
   const client = await pool.connect();
   
   try {
-    const userId = req.user.id;
-    const { 
-      coins, 
-      description, 
-      orderId,
-      reservationId,
-      restaurantId,
-      category = 'Food Orders',
-      requirePin = true
-    } = req.body;
+      const userId = req.user.id;
+      const {
+        coins,
+        description,
+        orderId,
+        reservationId,
+        menu_item_id,
+        category = "Food Orders",
+        requirePin = coins > 100 ? true : false,
+      } = req.body;
+
+
+      console.log(menu_item_id);
+  
+      let restaurantId = null;
+  
+      if(menu_item_id){
+        const restaurant_Id = await menuModel.getRestaurantIdFromMenu(menu_item_id);
+        restaurantId = restaurant_Id.restaurant_id
+      }
 
     if (!coins || coins <= 0) {
       return res.status(400).json({
@@ -1035,12 +1068,6 @@ export const spendCoins = async (req, res) => {
       });
     }
 
-    if (!restaurantId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Restaurant ID is required'
-      });
-    }
 
     await client.query('BEGIN');
 
@@ -1115,7 +1142,7 @@ export const spendCoins = async (req, res) => {
 
     // Record restaurant earnings
     const earningData = {
-      restaurantId,
+      restaurantId : restaurantId,
       transactionId: transaction.id,
       orderId,
       reservationId,
@@ -1155,7 +1182,7 @@ export const spendCoins = async (req, res) => {
     const user = userQuery.rows[0];
     
     const restaurantQuery = await client.query(
-      'SELECT name FROM restaurant_profiles WHERE id = $1',
+      'SELECT restaurant_name FROM restaurant_profiles WHERE id = $1',
       [restaurantId]
     );
     const restaurant = restaurantQuery.rows[0];
