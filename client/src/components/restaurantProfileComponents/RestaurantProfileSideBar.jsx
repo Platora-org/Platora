@@ -1,6 +1,7 @@
 import { useAuth } from "../../utils/AuthContext";
 import { useLocation, Link } from 'react-router-dom';
 import { useState, useEffect, useRef } from "react";
+import { Layers } from "lucide-react";
 
 const RestaurantProfileSideBar = ({ onLogout, loggedUser }) => {
 
@@ -60,6 +61,14 @@ const RestaurantProfileSideBar = ({ onLogout, loggedUser }) => {
                 { label: "Security Settings", href: "/restaurant/security" },
             ],
         },
+            {
+      type: "link",
+      label: "Menu",
+      href: "/restaurant/menu",
+      icon: (
+        <Layers className="w-4 h-4 opacity-75" />
+      ),
+    },
         {
             type: "link",
             label: "Orders",
@@ -89,9 +98,9 @@ const RestaurantProfileSideBar = ({ onLogout, loggedUser }) => {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2" />
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 12h-6a1 1 0 000 2h6a1 1 0 000-2z" />
                 </svg>
-
             ),
         },
+
     ];
 
     const isActiveLink = (href) => {

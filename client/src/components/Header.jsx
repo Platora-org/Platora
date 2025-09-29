@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Menu, X, Utensils, User, Store, Shield, Home } from 'lucide-react';
+import { Menu, X, Utensils, ShoppingCart } from 'lucide-react';
 import { Link } from "react-router-dom";
 import ProfileButton from "./ProfileButton";
 import { useAuth } from "../utils/AuthContext";
+import axiosInstance from "../utils/axiosInstance"; 
 
 // Navigation configuration for different user roles
 const navigationConfig = {
@@ -22,54 +23,68 @@ const navigationConfig = {
     nav: [
       { label: "Home", path: "/" },
       { label: "Restaurants", path: "/restaurants" },
+      { label: "Reservations", path: "/reservations" },
       { label: "My Orders", path: "/customerprofile/orders" },
       { label: "About Us", path: "/about" },
     ],
     showProfile: true
   },
-  restaurant: {
-    showProfile: true
-  },
-  admin: {
-    showProfile: true
-  }
+  restaurant: { showProfile: true },
+  admin: { showProfile: true }
 };
 
 const Header = ({ isMenuOpen, setIsMenuOpen }) => {
   const [scrolled, setScrolled] = useState(false);
+  const [cartItems, setCartItems] = useState(0); // cart count
   const { logout, user } = useAuth();
-  
-  // Determine user role - customize this logic based on your user object structure
+
+  // Determine user role
   const getUserRole = () => {
     if (!user) return 'unregistered';
-    
-    // Adjust these conditions based on your user object structure
     if (user.role === 'admin' || user.isAdmin) return 'admin';
     if (user.role === 'restaurant' || user.userType === 'restaurant') return 'restaurant';
     if (user.role === 'customer' || user.userType === 'customer') return 'customer';
-    
-    // Fallback to customer if user exists but role is unclear
     return 'customer';
   };
 
   const currentUserRole = getUserRole();
   const currentConfig = navigationConfig[currentUserRole];
 
-  console.log("User from AuthContext:", user);
-  console.log("Current user role:", currentUserRole);
+  // Fetch cart count from backend
+  const fetchCartCount = async () => {
+    try {
+      const res = await axiosInstance.get("/api/carts/count");
+      // Adjust based on backend response
+      setCartItems(res.data.count || res.data.totalItems || 0);
+    } catch (err) {
+      console.error("Failed to fetch cart count:", err);
+    }
+  };
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-
+    const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+
+    if(getUserRole() == "customer"){
+      // Initial fetch
+    fetchCartCount();
+
+    // Listen for cartUpdated event
+    const handleCartUpdate = () => fetchCartCount();
+    window.addEventListener("cartUpdated", handleCartUpdate);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener("cartUpdated", handleCartUpdate);
+    };
+    }
+
+    
   }, []);
 
   // Render navigation items
   const renderNavItems = (isMobile = false) => {
-    return currentConfig.nav.map(({ label, path, icon: Icon }, i) => (
+    return currentConfig.nav?.map(({ label, path, icon: Icon }, i) => (
       <Link
         key={i}
         to={path}
@@ -89,9 +104,8 @@ const Header = ({ isMenuOpen, setIsMenuOpen }) => {
   // Render CTA buttons for unregistered users
   const renderCTA = (isMobile = false) => {
     if (currentUserRole !== 'unregistered') return null;
-
     const { primary, secondary } = currentConfig.cta;
-    
+
     if (isMobile) {
       return (
         <>
@@ -146,21 +160,38 @@ const Header = ({ isMenuOpen, setIsMenuOpen }) => {
           <span>Platora</span>
         </Link>
 
-        {/* Desktop Nav - Only show for unregistered and customer users */}
+        {/* Desktop Nav */}
         {(currentUserRole === 'unregistered' || currentUserRole === 'customer') && (
           <nav className="hidden md:flex items-center space-x-8">
             {renderNavItems()}
           </nav>
         )}
 
-        {/* Desktop CTA or Profile */}
-        {currentConfig.showProfile ? (
-          <ProfileButton scrolled={scrolled} onLogout={logout} userRole={currentUserRole} />
-        ) : (
-          renderCTA()
-        )}
+        <div className="flex items-center space-x-8">
+          {/* Shopping Cart Icon */}
+          {(currentUserRole === 'unregistered' || currentUserRole === 'customer') && (
+            <Link 
+              to="/Plate" 
+              className="relative text-gray-700 dark:text-gray-300 hover:text-emerald-500 dark:hover:text-emerald-400 transition"
+            >
+              <ShoppingCart className="w-6 h-6" />
+              {cartItems > 0 && (
+                <span className="absolute -top-2 -right-2 bg-emerald-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                  {cartItems}
+                </span>
+              )}
+            </Link>
+          )}
 
-        {/* Mobile Menu Button - Only show for unregistered and customer users */}
+          {/* Desktop CTA or Profile */}
+          {currentConfig.showProfile ? (
+            <ProfileButton scrolled={scrolled} onLogout={logout} userRole={currentUserRole} />
+          ) : (
+            renderCTA()
+          )}
+        </div>
+
+        {/* Mobile Menu Button */}
         {(currentUserRole === 'unregistered' || currentUserRole === 'customer') && (
           <div className="md:hidden">
             <button onClick={() => setIsMenuOpen(!isMenuOpen)} aria-label="Toggle menu">
@@ -174,7 +205,7 @@ const Header = ({ isMenuOpen, setIsMenuOpen }) => {
         )}
       </div>
 
-      {/* Mobile Dropdown Menu - Only show for unregistered and customer users */}
+      {/* Mobile Dropdown Menu */}
       {(currentUserRole === 'unregistered' || currentUserRole === 'customer') && (
         <div
           className={`md:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 ${
@@ -184,6 +215,21 @@ const Header = ({ isMenuOpen, setIsMenuOpen }) => {
           <nav className="flex flex-col space-y-4">
             {renderNavItems(true)}
             {renderCTA(true)}
+
+            {/* Shopping Cart Icon in Mobile Menu */}
+            <Link 
+              to="/Plate" 
+              className="flex items-center space-x-2 text-gray-700 dark:text-gray-300 hover:text-emerald-500 dark:hover:text-emerald-400 transition relative"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              <ShoppingCart className="w-5 h-5" />
+              <span>Cart</span>
+              {cartItems > 0 && (
+                <span className="absolute -top-2 -right-0.5 bg-emerald-500 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">
+                  {cartItems} 
+                </span>
+              )}
+            </Link>
           </nav>
         </div>
       )}

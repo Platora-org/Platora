@@ -14,9 +14,32 @@ const RestaurantProfile = lazy(() => import("../pages/RestaurantProfile"))
 const RestaurantDashboard = lazy(() => import("../components/restaurantProfileComponents/RestaurantDashboard"))
 const AdminDashboard = lazy(() => import("../components/adminProfileComponents/AdminDashboard"))
 const AdminProfile = lazy(() => import("../pages/AdminProfile"))
+const RestaurantWallet = lazy(() => import("../components/restaurantProfileComponents/RestaurantWallet"));
 const DeliveryAgentManagement = lazy(() => import("../components/adminProfileComponents/DeliverAgent"))
 const DeliveryAgentDashboard = lazy(() => import("../pages/DeliveryAgentDashboard"));
 const CustomerReservation = lazy(() => import("../components/customerProfileComponents/CustomerReservation"))
+const kycrequests = lazy(() => import("../components/adminProfileComponents/AdminKycApproval"));
+const RestaurantsDisplay = lazy(() => import("../pages/RestaurantsDisplay"));
+const RestaurantMenuList = lazy(() => import("../pages/RestaurantMenuList"));
+const ReservationList = lazy(() => import("../components/customerProfileComponents/ReservationList"));
+const TableAvailability = lazy(() => import("../components/customerProfileComponents/TableAvailability"));
+const Menu = lazy(() => import("../components/restaurantProfileComponents/RestaurantOperations"));
+const AuditLogs = lazy(() => import("../components/adminProfileComponents/AdminAuditLogs"));
+const AdminFoodCourt = lazy(() => import("../components/adminProfileComponents/AdminFoodCourt"));
+const CustomerWallet = lazy(() => import("../components/customerProfileComponents/CustomerWalletDashboard"));
+const ReservationForm = lazy(() => import("../components/customerProfileComponents/ReservationForm"));
+const AdminReservationList = lazy(() => import("../components/adminProfileComponents/AdminReservationList"));
+const Plate = lazy(() => import("../pages/Plate"));
+const CustomerOrders = lazy(() => import("../components/customerProfileComponents/CustomerOrders"))
+
+const RestaurantOrders = lazy(() => import("../components/restaurantProfileComponents/RestaurantOrders"))
+
+const RestaurantDetails = lazy(() => import("../components/restaurantProfileComponents/RestaurantDetails"))
+const AboutUs = lazy(() => import("../components/AboutUs"))
+const AdminPayoutDashboard = lazy(() => import("../components/adminProfileComponents/AdminPayoutDashboard"));
+const AdminAnalytictsDashboard = lazy(() => import("../components/adminProfileComponents/AdminAnalyticsDashboard"));
+const TransactionList = lazy(() => import("../components/adminProfileComponents/TransactionList"));
+const SecurityAuditLogs = lazy(() => import("../components/adminProfileComponents/SecurityAuditLogs"));
 const Chat = lazy(() => import("../pages/chat"));
 
 
@@ -26,6 +49,30 @@ export const appRoutes = [
     component: LoginPage,
     requiresAuth: false,
     hideHeader: true
+  },
+  {
+    path: "/about",
+    component: AboutUs,
+    requiresAuth: false,
+  },
+   
+  {
+    path: "/plate",
+    component: Plate,
+    requiresAuth: true,
+    allowedRoles: ["customer", "guest"],
+  },
+  {
+    path: "/restaurants",
+    component: RestaurantsDisplay,
+    requiresAuth: true,
+    allowedRoles: ["customer", "guest"],
+  },
+  {
+    path: "/restaurants/:id/menu",
+    component: RestaurantMenuList,
+    requiresAuth: true,
+    allowedRoles: ["customer", "guest"],
   },
   {
     path: "/deliveryagent",
@@ -40,18 +87,21 @@ export const appRoutes = [
     requiresAuth: false,
     hideHeader: true
   },
+  
   {
     path: "*",
     component: NotFound,
     requiresAuth: false,
     hideHeader: true,
   },
+
   {
     path: "/",
     component: Home,
     requiresAuth: true,
     allowedRoles: ["customer", "guest"],
   },
+
   {
     path: "/customerprofile/*",
     component: CustomerProfile,
@@ -67,6 +117,10 @@ export const appRoutes = [
         component: Analysis,
       },
       {
+        path: "orders",
+        component: CustomerOrders,
+      },
+      {
         path: "settings",
         component: Settings,
       },
@@ -74,18 +128,25 @@ export const appRoutes = [
         path: "details",
         component: CustomerPersonalDetails,
       },
-      {
-        path: "reservation",
-        component: CustomerReservation,
+       {
+        path: "reservations",
+        component: ReservationList,
       },
+      {
+        path: "wallet",
+        component: CustomerWallet, 
+      },
+     
     ]
   },
+
   {
     path: "/redirect",
     component: RedirectPage,
     requiresAuth: false,
     hideHeader: true
   },
+
   {
     path: "/restaurant/*",
     component: RestaurantProfile,
@@ -96,8 +157,25 @@ export const appRoutes = [
         path: "",
         component: RestaurantDashboard,
       },
+      {
+        path: "wallet",
+        component: RestaurantWallet, 
+      },
+      {
+        path: "orders",
+        component: RestaurantOrders, 
+      },
+      {
+        path: "menu",
+        component: Menu, 
+      },
+       {
+        path: "details",
+        component: RestaurantDetails, 
+      },
     ]
   },
+
    {
     path: "/admin/*",
     component: AdminProfile,
@@ -108,18 +186,73 @@ export const appRoutes = [
         path: "",
         component: AdminDashboard,
       },
-       {
+      {
         path: "deliveryagentmanage",
         component: DeliveryAgentManagement,
       },
+      {
+        path: "kycrequests",
+        component: kycrequests,
+      },
+      {
+        path: "auditlogs",
+        component: AuditLogs,
+      },
+      {
+        path: "reservations/food-court",
+        component: AdminFoodCourt 
+      },
+      { path: "reservations/list", 
+        component: AdminReservationList 
+      },
+      {
+        path: "adminpayouts",
+        component: AdminPayoutDashboard
+      },
+      {
+        path: "walletAnalytics",
+        component: AdminAnalytictsDashboard
+      },
+      {
+        path: "transactions",
+        component: TransactionList
+      },
+      {
+        path: "logsSecurity-audit",
+        component: SecurityAuditLogs
+      },
     ]
   },
+
+   {
+    path: "/reservations",           
+    component: CustomerReservation,
+    requiresAuth: true,
+    allowedRoles: ["customer"],      
+  },
+
+    {
+    path: "/tables",
+    component: TableAvailability,
+    requiresAuth: true,
+    allowedRoles: ["customer"],
+  },
+
+   {
+    path: "/reservation-form",
+    component: ReservationForm,
+    requiresAuth: true,
+    allowedRoles: ["customer"],
+  },
+
+
   {
   path: "/chat",
   component: Chat,
   requiresAuth: false,   // or false if you want it open to anyone
   allowedRoles: [], // adjust depending on who can chat
 },
+
 
 ]
 
