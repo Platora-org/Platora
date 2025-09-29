@@ -1,14 +1,15 @@
 import pool from "../config/db.js";
 import * as WalletModel from "../models/walletModel.js";
 import * as TransactionModel from "../models/transactionModel.js";
+import * as menuModel from "../models/menuModel.js"
 import * as WalletService from "../services/walletService.js";
-import * as RestaurantEarningsModel from '../models/restaurantEarningsModel.js';
+import * as RestaurantEarningsModel from "../models/restaurantEarningsModel.js";
 import {
   sendPurchaseConfirmation,
   sendTransactionReceipt,
-  sendLowBalanceAlert
-} from '../services/emailService.js';
-import bcrypt from 'bcrypt';
+  sendLowBalanceAlert,
+} from "../services/emailService.js";
+import bcrypt from "bcrypt";
 
 // Get wallet information
 export const getWallet = async (req, res) => {
@@ -20,7 +21,7 @@ export const getWallet = async (req, res) => {
     if (!wallet) {
       return res.status(404).json({
         success: false,
-        message: 'Wallet not found'
+        message: "Wallet not found",
       });
     }
 
@@ -30,14 +31,14 @@ export const getWallet = async (req, res) => {
       success: true,
       wallet: {
         ...wallet,
-        stats
-      }
+        stats,
+      },
     });
   } catch (error) {
-    console.error('Error fetching wallet:', error);
+    console.error("Error fetching wallet:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch wallet information'
+      message: "Failed to fetch wallet information",
     });
   }
 };
@@ -50,7 +51,7 @@ export const getExchangeRates = async (req, res) => {
     if (!ratesResult.success) {
       return res.status(500).json({
         success: false,
-        message: ratesResult.message
+        message: ratesResult.message,
       });
     }
 
@@ -58,13 +59,13 @@ export const getExchangeRates = async (req, res) => {
       success: true,
       rates: ratesResult.rates,
       lastUpdated: ratesResult.lastUpdated,
-      source: ratesResult.source
+      source: ratesResult.source,
     });
   } catch (error) {
-    console.error('Error fetching exchange rates:', error);
+    console.error("Error fetching exchange rates:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch exchange rates'
+      message: "Failed to fetch exchange rates",
     });
   }
 };
@@ -72,10 +73,10 @@ export const getExchangeRates = async (req, res) => {
 // Update exchange rates
 export const updateExchangeRates = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== "admin") {
       return res.status(403).json({
         success: false,
-        message: 'Admin access required'
+        message: "Admin access required",
       });
     }
 
@@ -87,19 +88,19 @@ export const updateExchangeRates = async (req, res) => {
         message: result.message,
         rates: result.rates,
         source: result.source,
-        lastUpdated: result.lastUpdated
+        lastUpdated: result.lastUpdated,
       });
     } else {
       res.status(500).json({
         success: false,
-        message: result.message
+        message: result.message,
       });
     }
   } catch (error) {
-    console.error('Error updating exchange rates:', error);
+    console.error("Error updating exchange rates:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update exchange rates'
+      message: "Failed to update exchange rates",
     });
   }
 };
@@ -112,52 +113,56 @@ export const unlockWallet = async (req, res) => {
     const { userId } = req.body;
     const adminId = req.user.id;
 
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== "admin") {
       return res.status(403).json({
         success: false,
-        message: 'Admin access required'
+        message: "Admin access required",
       });
     }
 
     if (!userId) {
       return res.status(400).json({
         success: false,
-        message: 'User ID is required'
+        message: "User ID is required",
       });
     }
 
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     const result = await WalletModel.unlockWallet(userId, adminId, client);
 
     if (result) {
       // Log admin action
-      await WalletModel.logSecurityEvent(adminId, 'ADMIN_WALLET_UNLOCKED', {
-        targetUserId: userId,
-        timestamp: new Date().toISOString(),
-        ip_address: req.ip
-      }, client);
+      await WalletModel.logSecurityEvent(
+        adminId,
+        "ADMIN_WALLET_UNLOCKED",
+        {
+          targetUserId: userId,
+          timestamp: new Date().toISOString(),
+          ip_address: req.ip,
+        },
+        client
+      );
 
-      await client.query('COMMIT');
+      await client.query("COMMIT");
 
       res.json({
         success: true,
-        message: 'Wallet unlocked successfully'
+        message: "Wallet unlocked successfully",
       });
     } else {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       res.status(404).json({
         success: false,
-        message: 'Wallet not found'
+        message: "Wallet not found",
       });
     }
-
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error unlocking wallet:', error);
+    await client.query("ROLLBACK");
+    console.error("Error unlocking wallet:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to unlock wallet'
+      message: "Failed to unlock wallet",
     });
   } finally {
     client.release();
@@ -167,10 +172,10 @@ export const unlockWallet = async (req, res) => {
 // Get PIN security report (admin only)
 export const getPinSecurityReport = async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== "admin") {
       return res.status(403).json({
         success: false,
-        message: 'Admin access required'
+        message: "Admin access required",
       });
     }
 
@@ -211,17 +216,20 @@ export const getPinSecurityReport = async (req, res) => {
         frozenWallets: parseInt(stats.frozen_wallets),
         activeWallets: parseInt(stats.active_wallets),
         walletsWithFailedAttempts: parseInt(stats.wallets_with_failed_attempts),
-        averageFailedAttempts: parseFloat(stats.avg_failed_attempts || 0).toFixed(2),
-        pinAdoptionRate: ((stats.wallets_with_pin / stats.total_wallets) * 100).toFixed(1) + '%',
-        recentSecurityEvents: securityEvents.rows
-      }
+        averageFailedAttempts: parseFloat(
+          stats.avg_failed_attempts || 0
+        ).toFixed(2),
+        pinAdoptionRate:
+          ((stats.wallets_with_pin / stats.total_wallets) * 100).toFixed(1) +
+          "%",
+        recentSecurityEvents: securityEvents.rows,
+      },
     });
-
   } catch (error) {
-    console.error('Error getting PIN security report:', error);
+    console.error("Error getting PIN security report:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get security report'
+      message: "Failed to get security report",
     });
   }
 };
@@ -232,16 +240,20 @@ export const processRefund = async (req, res) => {
 
   try {
     const userId = req.user.id;
-    const { originalTransactionId, refundAmount, reason = 'Customer request' } = req.body;
+    const {
+      originalTransactionId,
+      refundAmount,
+      reason = "Customer request",
+    } = req.body;
 
     if (!originalTransactionId) {
       return res.status(400).json({
         success: false,
-        message: 'Original transaction ID is required'
+        message: "Original transaction ID is required",
       });
     }
 
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     const refundTransaction = await TransactionModel.processRefund(
       originalTransactionId,
@@ -251,26 +263,30 @@ export const processRefund = async (req, res) => {
     );
 
     // Log refund event
-    await WalletModel.logSecurityEvent(userId, 'REFUND_PROCESSED', {
-      originalTransactionId,
-      refundAmount: refundAmount || 'full',
-      reason
-    }, client);
+    await WalletModel.logSecurityEvent(
+      userId,
+      "REFUND_PROCESSED",
+      {
+        originalTransactionId,
+        refundAmount: refundAmount || "full",
+        reason,
+      },
+      client
+    );
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
 
     res.json({
       success: true,
-      message: 'Refund processed successfully',
-      refundTransaction
+      message: "Refund processed successfully",
+      refundTransaction,
     });
-
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error processing refund:', error);
+    await client.query("ROLLBACK");
+    console.error("Error processing refund:", error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Failed to process refund'
+      message: error.message || "Failed to process refund",
     });
   } finally {
     client.release();
@@ -284,24 +300,29 @@ export const getSecurityStatus = async (req, res) => {
 
     const securityMetrics = await WalletModel.checkSuspiciousActivity(userId);
     const recentLogs = await WalletModel.getSecurityLogs(userId, 10);
-    const recentFailedAttempts = await WalletModel.getRecentFailedAttempts(userId, 24);
+    const recentFailedAttempts = await WalletModel.getRecentFailedAttempts(
+      userId,
+      24
+    );
 
     res.json({
       success: true,
       security: {
-        status: securityMetrics?.security_status || 'NORMAL',
+        status: securityMetrics?.security_status || "NORMAL",
         metrics: securityMetrics,
         recentLogs,
         recentFailedAttempts,
-        recommendations: generateSecurityRecommendations(securityMetrics, recentFailedAttempts)
-      }
+        recommendations: generateSecurityRecommendations(
+          securityMetrics,
+          recentFailedAttempts
+        ),
+      },
     });
-
   } catch (error) {
-    console.error('Error fetching security status:', error);
+    console.error("Error fetching security status:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch security status'
+      message: "Failed to fetch security status",
     });
   }
 };
@@ -312,25 +333,26 @@ const generateSecurityRecommendations = (metrics, failedAttempts) => {
 
   if (!metrics?.pin_hash) {
     recommendations.push({
-      type: 'warning',
-      message: 'Set up a PIN for additional security',
-      action: 'setup_pin'
+      type: "warning",
+      message: "Set up a PIN for additional security",
+      action: "setup_pin",
     });
   }
 
   if (failedAttempts > 2) {
     recommendations.push({
-      type: 'alert',
-      message: 'Multiple failed PIN attempts detected. Consider changing your PIN.',
-      action: 'change_pin'
+      type: "alert",
+      message:
+        "Multiple failed PIN attempts detected. Consider changing your PIN.",
+      action: "change_pin",
     });
   }
 
   if (metrics?.failed_pin_attempts >= 2) {
     recommendations.push({
-      type: 'warning',
-      message: 'Recent failed PIN attempts. Ensure your PIN is secure.',
-      action: 'review_security'
+      type: "warning",
+      message: "Recent failed PIN attempts. Ensure your PIN is secure.",
+      action: "review_security",
     });
   }
 
@@ -342,10 +364,10 @@ export const bulkWalletOperation = async (req, res) => {
   const client = await pool.connect();
 
   try {
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== "admin") {
       return res.status(403).json({
         success: false,
-        message: 'Admin access required'
+        message: "Admin access required",
       });
     }
 
@@ -354,61 +376,73 @@ export const bulkWalletOperation = async (req, res) => {
     if (!operation || !userIds || !Array.isArray(userIds)) {
       return res.status(400).json({
         success: false,
-        message: 'Operation and user IDs array are required'
+        message: "Operation and user IDs array are required",
       });
     }
 
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     let results = [];
 
     switch (operation) {
-      case 'freeze':
-        results = await WalletModel.bulkUpdateWalletStatus(userIds, 'FROZEN', client);
+      case "freeze":
+        results = await WalletModel.bulkUpdateWalletStatus(
+          userIds,
+          "FROZEN",
+          client
+        );
         break;
 
-      case 'unfreeze':
-        results = await WalletModel.bulkUpdateWalletStatus(userIds, 'ACTIVE', client);
+      case "unfreeze":
+        results = await WalletModel.bulkUpdateWalletStatus(
+          userIds,
+          "ACTIVE",
+          client
+        );
         break;
 
-      case 'reset_pins':
+      case "reset_pins":
         for (const userId of userIds) {
           await WalletModel.updateWalletPin(userId, null, client);
           await WalletModel.unlockWallet(userId, req.user.id, client);
         }
-        results = userIds.map(id => ({ user_id: id, status: 'PIN_RESET' }));
+        results = userIds.map((id) => ({ user_id: id, status: "PIN_RESET" }));
         break;
 
       default:
-        await client.query('ROLLBACK');
+        await client.query("ROLLBACK");
         return res.status(400).json({
           success: false,
-          message: 'Invalid operation'
+          message: "Invalid operation",
         });
     }
 
     // Log bulk operation
-    await WalletModel.logSecurityEvent(req.user.id, 'BULK_OPERATION', {
-      operation,
-      userIds,
-      affectedCount: results.length
-    }, client);
+    await WalletModel.logSecurityEvent(
+      req.user.id,
+      "BULK_OPERATION",
+      {
+        operation,
+        userIds,
+        affectedCount: results.length,
+      },
+      client
+    );
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
 
     res.json({
       success: true,
       message: `Bulk ${operation} completed successfully`,
       results,
-      affectedCount: results.length
+      affectedCount: results.length,
     });
-
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error in bulk wallet operation:', error);
+    await client.query("ROLLBACK");
+    console.error("Error in bulk wallet operation:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to perform bulk operation'
+      message: "Failed to perform bulk operation",
     });
   } finally {
     client.release();
@@ -424,20 +458,19 @@ export const getWalletLimits = async (req, res) => {
     if (!limits) {
       return res.status(404).json({
         success: false,
-        message: 'Wallet limits not found'
+        message: "Wallet limits not found",
       });
     }
 
     res.json({
       success: true,
-      limits
+      limits,
     });
-
   } catch (error) {
-    console.error('Error fetching wallet limits:', error);
+    console.error("Error fetching wallet limits:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch wallet limits'
+      message: "Failed to fetch wallet limits",
     });
   }
 };
@@ -449,21 +482,21 @@ export const updateWalletLimits = async (req, res) => {
   try {
     const { userId, dailyLimit, monthlyLimit } = req.body;
 
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== "admin") {
       return res.status(403).json({
         success: false,
-        message: 'Admin access required'
+        message: "Admin access required",
       });
     }
 
     if (!userId || (!dailyLimit && !monthlyLimit)) {
       return res.status(400).json({
         success: false,
-        message: 'User ID and at least one limit value are required'
+        message: "User ID and at least one limit value are required",
       });
     }
 
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     const result = await WalletModel.updateWalletLimits(
       userId,
@@ -473,27 +506,31 @@ export const updateWalletLimits = async (req, res) => {
     );
 
     // Log admin action
-    await WalletModel.logSecurityEvent(req.user.id, 'LIMITS_UPDATED', {
-      targetUserId: userId,
-      dailyLimit,
-      monthlyLimit,
-      adminId: req.user.id
-    }, client);
+    await WalletModel.logSecurityEvent(
+      req.user.id,
+      "LIMITS_UPDATED",
+      {
+        targetUserId: userId,
+        dailyLimit,
+        monthlyLimit,
+        adminId: req.user.id,
+      },
+      client
+    );
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
 
     res.json({
       success: true,
-      message: 'Wallet limits updated successfully',
-      limits: result
+      message: "Wallet limits updated successfully",
+      limits: result,
     });
-
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error updating wallet limits:', error);
+    await client.query("ROLLBACK");
+    console.error("Error updating wallet limits:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update wallet limits'
+      message: "Failed to update wallet limits",
     });
   } finally {
     client.release();
@@ -509,29 +546,31 @@ export const getTransactionById = async (req, res) => {
     if (!transactionId) {
       return res.status(400).json({
         success: false,
-        message: 'Transaction ID is required'
+        message: "Transaction ID is required",
       });
     }
 
-    const transaction = await TransactionModel.getTransactionById(transactionId, userId);
+    const transaction = await TransactionModel.getTransactionById(
+      transactionId,
+      userId
+    );
 
     if (!transaction) {
       return res.status(404).json({
         success: false,
-        message: 'Transaction not found'
+        message: "Transaction not found",
       });
     }
 
     res.json({
       success: true,
-      transaction
+      transaction,
     });
-
   } catch (error) {
-    console.error('Error fetching transaction:', error);
+    console.error("Error fetching transaction:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch transaction'
+      message: "Failed to fetch transaction",
     });
   }
 };
@@ -543,16 +582,16 @@ export const cancelTransaction = async (req, res) => {
   try {
     const userId = req.user.id;
     const { transactionId } = req.params;
-    const { reason = 'Cancelled by user' } = req.body;
+    const { reason = "Cancelled by user" } = req.body;
 
     if (!transactionId) {
       return res.status(400).json({
         success: false,
-        message: 'Transaction ID is required'
+        message: "Transaction ID is required",
       });
     }
 
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     const cancelledTransaction = await TransactionModel.cancelTransaction(
       transactionId,
@@ -561,25 +600,29 @@ export const cancelTransaction = async (req, res) => {
     );
 
     // Log cancellation event
-    await WalletModel.logSecurityEvent(userId, 'TRANSACTION_CANCELLED', {
-      transactionId,
-      reason
-    }, client);
+    await WalletModel.logSecurityEvent(
+      userId,
+      "TRANSACTION_CANCELLED",
+      {
+        transactionId,
+        reason,
+      },
+      client
+    );
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
 
     res.json({
       success: true,
-      message: 'Transaction cancelled successfully',
-      transaction: cancelledTransaction
+      message: "Transaction cancelled successfully",
+      transaction: cancelledTransaction,
     });
-
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error cancelling transaction:', error);
+    await client.query("ROLLBACK");
+    console.error("Error cancelling transaction:", error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Failed to cancel transaction'
+      message: error.message || "Failed to cancel transaction",
     });
   } finally {
     client.release();
@@ -614,15 +657,14 @@ export const getWalletActivity = async (req, res) => {
       activity: {
         summary,
         recentTransactions: recentTransactions.transactions,
-        period: `${days} days`
-      }
+        period: `${days} days`,
+      },
     });
-
   } catch (error) {
-    console.error('Error fetching wallet activity:', error);
+    console.error("Error fetching wallet activity:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch wallet activity'
+      message: "Failed to fetch wallet activity",
     });
   }
 };
@@ -638,27 +680,27 @@ export const validateTransactionPin = async (req, res, next) => {
     if (!pin) {
       return res.status(400).json({
         success: false,
-        message: 'PIN is required for this transaction'
+        message: "PIN is required for this transaction",
       });
     }
 
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     const walletPinInfo = await WalletModel.getWalletPinInfo(userId);
 
     if (!walletPinInfo || !walletPinInfo.pin_hash) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       return res.status(400).json({
         success: false,
-        message: 'PIN not set. Please set a PIN first.'
+        message: "PIN not set. Please set a PIN first.",
       });
     }
 
     if (walletPinInfo.failed_pin_attempts >= 3) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       return res.status(400).json({
         success: false,
-        message: 'Too many failed attempts. Wallet locked.'
+        message: "Too many failed attempts. Wallet locked.",
       });
     }
 
@@ -666,25 +708,24 @@ export const validateTransactionPin = async (req, res, next) => {
 
     if (isPinValid) {
       await WalletModel.resetFailedPinAttempts(userId, client);
-      await client.query('COMMIT');
+      await client.query("COMMIT");
       req.pinVerified = true;
       next();
     } else {
       await WalletModel.incrementFailedPinAttempts(userId, client);
-      await client.query('COMMIT');
+      await client.query("COMMIT");
 
       return res.status(400).json({
         success: false,
-        message: 'Invalid PIN'
+        message: "Invalid PIN",
       });
     }
-
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error validating transaction PIN:', error);
+    await client.query("ROLLBACK");
+    console.error("Error validating transaction PIN:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to validate PIN'
+      message: "Failed to validate PIN",
     });
   } finally {
     client.release();
@@ -694,34 +735,38 @@ export const validateTransactionPin = async (req, res, next) => {
 // Calculate coin price
 export const calculateCoinPrice = async (req, res) => {
   try {
-    const { coins, currency = 'LKR' } = req.query;
+    const { coins, currency = "LKR" } = req.query;
 
     if (!coins || coins <= 0) {
       return res.status(400).json({
         success: false,
-        message: 'Valid coin amount is required'
+        message: "Valid coin amount is required",
       });
     }
 
     const basePrice = 50;
     const totalLKR = parseInt(coins) * basePrice;
 
-    if (currency === 'LKR') {
+    if (currency === "LKR") {
       return res.json({
         success: true,
         coins: parseInt(coins),
-        currency: 'LKR',
+        currency: "LKR",
         amount: totalLKR,
-        basePrice
+        basePrice,
       });
     }
 
-    const conversionResult = await WalletService.convertCurrency(totalLKR, 'LKR', currency);
+    const conversionResult = await WalletService.convertCurrency(
+      totalLKR,
+      "LKR",
+      currency
+    );
 
     if (!conversionResult.success) {
       return res.status(400).json({
         success: false,
-        message: conversionResult.message
+        message: conversionResult.message,
       });
     }
 
@@ -732,15 +777,14 @@ export const calculateCoinPrice = async (req, res) => {
       amount: conversionResult.convertedAmount,
       basePrice,
       exchangeRate: conversionResult.rate,
-      baseCurrency: 'LKR',
-      baseAmount: totalLKR
+      baseCurrency: "LKR",
+      baseAmount: totalLKR,
     });
-
   } catch (error) {
-    console.error('Error calculating coin price:', error);
+    console.error("Error calculating coin price:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to calculate coin price'
+      message: "Failed to calculate coin price",
     });
   }
 };
@@ -752,13 +796,13 @@ export const getSupportedCurrencies = async (req, res) => {
 
     res.json({
       success: true,
-      currencies
+      currencies,
     });
   } catch (error) {
-    console.error('Error fetching supported currencies:', error);
+    console.error("Error fetching supported currencies:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch supported currencies'
+      message: "Failed to fetch supported currencies",
     });
   }
 };
@@ -769,12 +813,12 @@ export const createPaymentIntent = async (req, res) => {
 
   try {
     const userId = req.user.id;
-    const { coins, currency = 'USD' } = req.body;
+    const { coins, currency = "USD" } = req.body;
 
     if (!coins || coins <= 0) {
       return res.status(400).json({
         success: false,
-        message: 'Valid coin amount is required'
+        message: "Valid coin amount is required",
       });
     }
 
@@ -783,7 +827,7 @@ export const createPaymentIntent = async (req, res) => {
     if (!supportedCurrencies[currency]?.supported) {
       return res.status(400).json({
         success: false,
-        message: `Currency ${currency} is not supported for payments. Please use USD, EUR, GBP, AUD, or JPY.`
+        message: `Currency ${currency} is not supported for payments. Please use USD, EUR, GBP, AUD, or JPY.`,
       });
     }
 
@@ -791,19 +835,26 @@ export const createPaymentIntent = async (req, res) => {
     const basePrice = 50;
     const totalLKR = coins * basePrice;
 
-    const conversionResult = await WalletService.convertCurrency(totalLKR, 'LKR', currency);
+    const conversionResult = await WalletService.convertCurrency(
+      totalLKR,
+      "LKR",
+      currency
+    );
 
     if (!conversionResult.success) {
       return res.status(400).json({
         success: false,
-        message: `Failed to convert to ${currency}: ${conversionResult.message}`
+        message: `Failed to convert to ${currency}: ${conversionResult.message}`,
       });
     }
 
     const amount = conversionResult.convertedAmount;
 
     // Check transaction limits
-    const limitCheck = await WalletModel.checkTransactionLimits(userId, totalLKR);
+    const limitCheck = await WalletModel.checkTransactionLimits(
+      userId,
+      totalLKR
+    );
 
     if (!limitCheck.valid) {
       return res.status(400).json({
@@ -811,31 +862,31 @@ export const createPaymentIntent = async (req, res) => {
         message: limitCheck.message,
         limits: {
           dailyRemaining: limitCheck.dailyRemaining,
-          monthlyRemaining: limitCheck.monthlyRemaining
-        }
+          monthlyRemaining: limitCheck.monthlyRemaining,
+        },
       });
     }
 
     // Check wallet status
     const wallet = await WalletModel.getWalletByUserId(userId);
-    if (!wallet || wallet.wallet_status !== 'ACTIVE') {
+    if (!wallet || wallet.wallet_status !== "ACTIVE") {
       return res.status(400).json({
         success: false,
-        message: 'Wallet is not active. Please contact support.'
+        message: "Wallet is not active. Please contact support.",
       });
     }
 
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     // Get user details for Stripe customer
     const userQuery = `SELECT email, first_name, last_name FROM users WHERE id = $1`;
     const userResult = await client.query(userQuery, [userId]);
 
     if (userResult.rows.length === 0) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       return res.status(404).json({
         success: false,
-        message: 'User not found'
+        message: "User not found",
       });
     }
 
@@ -848,27 +899,34 @@ export const createPaymentIntent = async (req, res) => {
       userId: userId,
       coins: coins,
       customerEmail: user.email,
-      description: `Purchase ${coins} coins for ${currency} ${amount.toFixed(2)}`
+      description: `Purchase ${coins} coins for ${currency} ${amount.toFixed(
+        2
+      )}`,
     });
 
     if (!paymentResult.success) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       return res.status(500).json({
         success: false,
         message: paymentResult.message,
-        type: paymentResult.type
+        type: paymentResult.type,
       });
     }
 
     // Log payment intent creation
-    await WalletModel.logSecurityEvent(userId, 'PAYMENT_INTENT_CREATED', {
-      amount,
-      currency,
-      coins,
-      paymentIntentId: paymentResult.paymentIntentId
-    }, client);
+    await WalletModel.logSecurityEvent(
+      userId,
+      "PAYMENT_INTENT_CREATED",
+      {
+        amount,
+        currency,
+        coins,
+        paymentIntentId: paymentResult.paymentIntentId,
+      },
+      client
+    );
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
 
     res.json({
       success: true,
@@ -878,15 +936,14 @@ export const createPaymentIntent = async (req, res) => {
       currency: paymentResult.currency,
       coins,
       exchangeRate: conversionResult.rate,
-      baseAmountLKR: totalLKR
+      baseAmountLKR: totalLKR,
     });
-
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error creating payment intent:', error);
+    await client.query("ROLLBACK");
+    console.error("Error creating payment intent:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to create payment intent'
+      message: "Failed to create payment intent",
     });
   } finally {
     client.release();
@@ -903,20 +960,24 @@ export const processSuccessfulPayment = async (req, res) => {
     if (!paymentIntentId) {
       return res.status(400).json({
         success: false,
-        message: 'Payment Intent ID is required'
+        message: "Payment Intent ID is required",
       });
     }
 
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
-    const result = await WalletService.processSuccessfulPayment(paymentIntentId, userId, client);
+    const result = await WalletService.processSuccessfulPayment(
+      paymentIntentId,
+      userId,
+      client
+    );
 
     if (result.success) {
-      await client.query('COMMIT');
+      await client.query("COMMIT");
 
       // Get user info and wallet balance for email
       const userQuery = await client.query(
-        'SELECT first_name, last_name, email FROM users WHERE id = $1',
+        "SELECT first_name, last_name, email FROM users WHERE id = $1",
         [userId]
       );
       const user = userQuery.rows[0];
@@ -925,57 +986,57 @@ export const processSuccessfulPayment = async (req, res) => {
 
       // Get payment intent details for currency info
       const piQuery = await client.query(
-        'SELECT currency, amount_money FROM payment_intents WHERE stripe_payment_intent_id = $1',
+        "SELECT currency, amount_money FROM payment_intents WHERE stripe_payment_intent_id = $1",
         [paymentIntentId]
       );
       const paymentIntent = piQuery.rows[0];
 
       // Currency symbols mapping
       const currencySymbols = {
-        'USD': '$',
-        'GBP': '£',
-        'EUR': '€',
-        'AUD': 'A$',
-        'JPY': '¥'
+        USD: "$",
+        GBP: "£",
+        EUR: "€",
+        AUD: "A$",
+        JPY: "¥",
       };
 
       // Send confirmation email (fire and forget)
       sendPurchaseConfirmation(
         {
           email: user.email,
-          firstName: user.first_name
+          firstName: user.first_name,
         },
         {
           coins: result.coinsAdded,
           amount: paymentIntent.amount_money,
           currency: paymentIntent.currency.toUpperCase(),
-          currencySymbol: currencySymbols[paymentIntent.currency.toUpperCase()] || '',
+          currencySymbol:
+            currencySymbols[paymentIntent.currency.toUpperCase()] || "",
           id: result.transaction.id,
           date: new Date(),
-          newBalance: wallet.balance_coins
+          newBalance: wallet.balance_coins,
         }
-      ).catch(err => console.error('Email error:', err));
+      ).catch((err) => console.error("Email error:", err));
 
       res.json({
         success: true,
         message: result.message,
         transaction: result.transaction,
-        coinsAdded: result.coinsAdded
+        coinsAdded: result.coinsAdded,
       });
     } else {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       res.status(400).json({
         success: false,
-        message: result.message
+        message: result.message,
       });
     }
-
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error processing successful payment:', error);
+    await client.query("ROLLBACK");
+    console.error("Error processing successful payment:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to process payment'
+      message: "Failed to process payment",
     });
   } finally {
     client.release();
@@ -988,26 +1049,45 @@ export const checkPaymentStatus = async (req, res) => {
     const userId = req.user.id;
     const { paymentIntentId } = req.params;
 
-    const result = await WalletService.checkPaymentStatus(paymentIntentId, userId);
+    const result = await WalletService.checkPaymentStatus(
+      paymentIntentId,
+      userId
+    );
 
     if (result.success) {
       res.json({
         success: true,
         status: result.status,
-        paymentIntent: result.paymentIntent
+        paymentIntent: result.paymentIntent,
       });
     } else {
       res.status(400).json({
         success: false,
-        message: result.message
+        message: result.message,
       });
     }
-
   } catch (error) {
-    console.error('Error checking payment status:', error);
+    console.error("Error checking payment status:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to check payment status'
+      message: "Failed to check payment status",
+    });
+  }
+};
+
+export const walletCheck = async (req, res) => {
+  const userId = req.user.id;
+  const {
+      coins
+    } = req.body;
+
+  const hasSufficient = await WalletModel.hasSufficientBalance(userId, coins);
+  const client = await pool.connect();
+  if (!hasSufficient) {
+    await client.query("ROLLBACK");
+    return res.status(400).json({
+      success: false,
+      message: "Insufficient coin balance",
     });
   }
 };
@@ -1023,55 +1103,57 @@ export const spendCoins = async (req, res) => {
       description,
       orderId,
       reservationId,
-      restaurantId,
-      category = 'Food Orders',
+      menu_item_id,
+      category = "Food Orders",
       requirePin = coins > 100 ? true : false,
     } = req.body;
 
+    if(menu_item_id){
+      const restaurantId = await menuModel.getRestaurantIdFromMenu(menu_item_id);
+    }
+  
     if (!coins || coins <= 0) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid coin amount'
+        message: "Invalid coin amount",
       });
     }
 
-
-
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     // Check wallet status and PIN if required
     const walletInfo = await WalletModel.getWalletPinInfo(userId);
     if (!walletInfo) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       return res.status(404).json({
         success: false,
-        message: 'Wallet not found'
+        message: "Wallet not found",
       });
     }
 
-    if (walletInfo.wallet_status !== 'ACTIVE') {
-      await client.query('ROLLBACK');
+    if (walletInfo.wallet_status !== "ACTIVE") {
+      await client.query("ROLLBACK");
       return res.status(400).json({
         success: false,
-        message: 'Wallet is not active'
+        message: "Wallet is not active",
       });
     }
 
     if (requirePin && walletInfo.pin_hash && !req.pinVerified) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       return res.status(400).json({
         success: false,
-        message: 'PIN verification required for this transaction',
-        requirePin: true
+        message: "PIN verification required for this transaction",
+        requirePin: true,
       });
     }
 
     const hasSufficient = await WalletModel.hasSufficientBalance(userId, coins);
     if (!hasSufficient) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       return res.status(400).json({
         success: false,
-        message: 'Insufficient coin balance'
+        message: "Insufficient coin balance",
       });
     }
 
@@ -1083,14 +1165,14 @@ export const spendCoins = async (req, res) => {
     // Create customer transaction
     const transactionData = {
       userId,
-      transactionType: 'SPEND',
+      transactionType: "SPEND",
       amountCoins: -coins,
       amountMoney: 0,
-      currency: 'LKR',
+      currency: "LKR",
       description: description || `Purchase - ${category}`,
       referenceId: orderId || reservationId,
-      status: 'COMPLETED',
-      paymentMethod: 'coins',
+      status: "COMPLETED",
+      paymentMethod: "coins",
       metadata: {
         category,
         order_id: orderId,
@@ -1099,11 +1181,14 @@ export const spendCoins = async (req, res) => {
         commission_coins: commissionCoins,
         restaurant_coins: restaurantCoins,
         ip_address: req.ip,
-        user_agent: req.get('User-Agent')
-      }
+        user_agent: req.get("User-Agent"),
+      },
     };
 
-    const transaction = await TransactionModel.createTransaction(transactionData, client);
+    const transaction = await TransactionModel.createTransaction(
+      transactionData,
+      client
+    );
 
     // Update customer wallet balance
     await WalletModel.updateBalance(userId, -coins, 0, client);
@@ -1116,44 +1201,48 @@ export const spendCoins = async (req, res) => {
       reservationId,
       grossCoins: coins,
       commissionCoins,
-      netCoins: restaurantCoins
+      netCoins: restaurantCoins,
     };
 
     if (restaurantId) {
       await RestaurantEarningsModel.createEarning(earningData, client);
     }
 
-
     // Record platform commission
     const commissionData = {
       transactionId: transaction.id,
       restaurantId,
       commissionCoins,
-      commissionPercentage
+      commissionPercentage,
     };
     if (restaurantId) {
       await RestaurantEarningsModel.createCommission(commissionData, client);
     }
     // Log spending event
-    await WalletModel.logSecurityEvent(userId, 'COINS_SPENT', {
-      amount: coins,
-      category,
-      orderId,
-      restaurantId,
-      commission: commissionCoins
-    }, client);
+    await WalletModel.logSecurityEvent(
+      userId,
+      "COINS_SPENT",
+      {
+        amount: coins,
+        category,
+        orderId,
+        restaurantId,
+        commission: commissionCoins,
+      },
+      client
+    );
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
 
     // Get user and restaurant info for email
     const userQuery = await client.query(
-      'SELECT first_name, email FROM users WHERE id = $1',
+      "SELECT first_name, email FROM users WHERE id = $1",
       [userId]
     );
     const user = userQuery.rows[0];
 
     const restaurantQuery = await client.query(
-      'SELECT restaurant_name FROM restaurant_profiles WHERE id = $1',
+      "SELECT restaurant_name FROM restaurant_profiles WHERE id = $1",
       [restaurantId]
     );
     const restaurant = restaurantQuery.rows[0];
@@ -1165,27 +1254,27 @@ export const spendCoins = async (req, res) => {
     sendTransactionReceipt(
       {
         email: user.email,
-        firstName: user.first_name
+        firstName: user.first_name,
       },
       {
         coinsSpent: coins,
-        restaurantName: restaurant?.name || 'Restaurant',
+        restaurantName: restaurant?.name || "Restaurant",
         orderId: orderId,
         id: transaction.id,
         date: new Date(),
-        remainingBalance: wallet.balance_coins
+        remainingBalance: wallet.balance_coins,
       }
-    ).catch(err => console.error('Email error:', err));
+    ).catch((err) => console.error("Email error:", err));
 
     // Check if balance is low (less than 50 coins) and send alert
     if (wallet.balance < 50 && wallet.balance > 0) {
       sendLowBalanceAlert(
         {
           email: user.email,
-          firstName: user.first_name
+          firstName: user.first_name,
         },
         wallet.balance
-      ).catch(err => console.error('Email error:', err));
+      ).catch((err) => console.error("Email error:", err));
     }
 
     res.json({
@@ -1195,55 +1284,45 @@ export const spendCoins = async (req, res) => {
         id: transaction.id,
         coins_spent: coins,
         restaurant_receives: restaurantCoins,
-        platform_commission: commissionCoins
-      }
+        platform_commission: commissionCoins,
+      },
     });
-
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error spending coins:', error);
+    await client.query("ROLLBACK");
+    console.error("Error spending coins:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to spend coins',
-      error: error.message
+      message: "Failed to spend coins",
+      error: error.message,
     });
   } finally {
     client.release();
   }
 };
 
-// Get transaction history
 export const getTransactions = async (req, res) => {
   try {
     const userId = req.user.id;
+
+    // Destructure ONCE
     const {
       page = 1,
       limit = 20,
       type,
       status,
-      dateFrom,
-      dateTo
+      dateFrom: startDate, // alias dateFrom → startDate
+      dateTo: endDate, // alias dateTo → endDate
     } = req.query;
 
-    const offset = (page - 1) * limit;
-    const filters = {};
+    const offset = (parseInt(page) - 1) * parseInt(limit);
 
+    const filters = {};
     if (type) filters.type = type.toUpperCase();
     if (status) filters.status = status.toUpperCase();
-    if (dateFrom) filters.dateFrom = dateFrom;
-    if (dateTo) filters.dateTo = dateTo;
+    if (startDate) filters.startDate = startDate;
+    if (endDate) filters.endDate = endDate;
 
-    const result = await TransactionModel.getTransactionsByUserId(userId, parseInt(limit), offset, filters);
-
-    const { 
-      type, 
-      startDate, 
-      endDate, 
-      status, 
-      page = 1, 
-      limit = 50 
-    } = req.query;
-
+    // Now build your query...
     let query = `
       SELECT 
         t.*,
@@ -1256,87 +1335,67 @@ export const getTransactions = async (req, res) => {
       LEFT JOIN restaurant_profiles rp ON (t.metadata->>'restaurant_id')::int = rp.id
       WHERE t.user_id = $1
     `;
-    
+
     const params = [userId];
     let paramCount = 1;
-    
+
     if (type) {
       paramCount++;
       query += ` AND t.transaction_type = $${paramCount}`;
-      params.push(type);
+      params.push(type.toUpperCase());
     }
-    
     if (startDate) {
       paramCount++;
       query += ` AND DATE(t.created_at) >= $${paramCount}`;
       params.push(startDate);
     }
-    
     if (endDate) {
       paramCount++;
       query += ` AND DATE(t.created_at) <= $${paramCount}`;
       params.push(endDate);
     }
-    
     if (status) {
       paramCount++;
       query += ` AND t.status = $${paramCount}`;
-      params.push(status);
+      params.push(status.toUpperCase());
     }
-    
-    query += ` ORDER BY t.created_at DESC`;
-    
-    // Add pagination
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-    paramCount++;
-    query += ` LIMIT $${paramCount}`;
-    params.push(parseInt(limit));
-    
-    paramCount++;
-    query += ` OFFSET $${paramCount}`;
-    params.push(offset);
-    
-    console.log('Executing query:', query);
-    console.log('With params:', params);
-    
+
+    query += ` ORDER BY t.created_at DESC LIMIT $${++paramCount} OFFSET $${++paramCount}`;
+    params.push(parseInt(limit), offset);
+
+    console.log("Executing query:", query, params);
+
     const result = await pool.query(query, params);
-    
-    // Get total count for pagination
-    let countQuery = `
-      SELECT COUNT(*) as total
-      FROM transactions t
-      WHERE t.user_id = $1
-    `;
+
+    // Total count query
+    let countQuery = `SELECT COUNT(*) as total FROM transactions t WHERE t.user_id = $1`;
     const countParams = [userId];
-    let countParamIndex = 1;
-    
+    let countIndex = 1;
+
     if (type) {
-      countParamIndex++;
-      countQuery += ` AND t.transaction_type = $${countParamIndex}`;
-      countParams.push(type);
+      countIndex++;
+      countQuery += ` AND t.transaction_type = $${countIndex}`;
+      countParams.push(type.toUpperCase());
     }
-    
     if (startDate) {
-      countParamIndex++;
-      countQuery += ` AND DATE(t.created_at) >= $${countParamIndex}`;
+      countIndex++;
+      countQuery += ` AND DATE(t.created_at) >= $${countIndex}`;
       countParams.push(startDate);
     }
-    
     if (endDate) {
-      countParamIndex++;
-      countQuery += ` AND DATE(t.created_at) <= $${countParamIndex}`;
+      countIndex++;
+      countQuery += ` AND DATE(t.created_at) <= $${countIndex}`;
       countParams.push(endDate);
     }
-    
     if (status) {
-      countParamIndex++;
-      countQuery += ` AND t.status = $${countParamIndex}`;
-      countParams.push(status);
+      countIndex++;
+      countQuery += ` AND t.status = $${countIndex}`;
+      countParams.push(status.toUpperCase());
     }
-    
+
     const countResult = await pool.query(countQuery, countParams);
     const totalCount = parseInt(countResult.rows[0].total);
-    
+
     res.json({
       success: true,
       transactions: result.rows,
@@ -1345,16 +1404,15 @@ export const getTransactions = async (req, res) => {
         totalPages: Math.ceil(totalCount / parseInt(limit)),
         totalCount,
         hasNext: parseInt(page) * parseInt(limit) < totalCount,
-        hasPrev: parseInt(page) > 1
-      }
+        hasPrev: parseInt(page) > 1,
+      },
     });
-    
   } catch (error) {
-    console.error('Error fetching transactions:', error);
+    console.error("Error fetching transactions:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch transactions',
-      error: error.message
+      message: "Failed to fetch transactions",
+      error: error.message,
     });
   }
 };
@@ -1363,26 +1421,31 @@ export const getTransactions = async (req, res) => {
 export const getAnalytics = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { period = 'month' } = req.query;
+    const { period = "month" } = req.query;
 
-    const analytics = await TransactionModel.getSpendingAnalytics(userId, period);
+    const analytics = await TransactionModel.getSpendingAnalytics(
+      userId,
+      period
+    );
     const trends = await TransactionModel.getMonthlyTrends(userId, 6);
-    const categorySpending = await TransactionModel.getCategorySpending(userId, period);
+    const categorySpending = await TransactionModel.getCategorySpending(
+      userId,
+      period
+    );
 
     res.json({
       success: true,
       analytics: {
         spendingByType: analytics,
         monthlyTrends: trends,
-        categorySpending
-      }
+        categorySpending,
+      },
     });
-
   } catch (error) {
-    console.error('Error fetching analytics:', error);
+    console.error("Error fetching analytics:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch analytics'
+      message: "Failed to fetch analytics",
     });
   }
 };
@@ -1394,19 +1457,22 @@ export const getRefunds = async (req, res) => {
     const { page = 1, limit = 20 } = req.query;
     const offset = (page - 1) * limit;
 
-    const refunds = await TransactionModel.getRefundHistory(userId, parseInt(limit), offset);
+    const refunds = await TransactionModel.getRefundHistory(
+      userId,
+      parseInt(limit),
+      offset
+    );
 
     res.json({
       success: true,
       refunds,
-      page: parseInt(page)
+      page: parseInt(page),
     });
-
   } catch (error) {
-    console.error('Error fetching refunds:', error);
+    console.error("Error fetching refunds:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch refunds'
+      message: "Failed to fetch refunds",
     });
   }
 };
@@ -1416,67 +1482,74 @@ export const addCoinsManually = async (req, res) => {
   const client = await pool.connect();
 
   try {
-    const { userId, coins, reason = 'Manual addition by admin' } = req.body;
+    const { userId, coins, reason = "Manual addition by admin" } = req.body;
 
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== "admin") {
       return res.status(403).json({
         success: false,
-        message: 'Admin access required'
+        message: "Admin access required",
       });
     }
 
     if (!userId || !coins || coins <= 0) {
       return res.status(400).json({
         success: false,
-        message: 'Valid user ID and coin amount required'
+        message: "Valid user ID and coin amount required",
       });
     }
 
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     const transactionData = {
       userId: parseInt(userId),
-      transactionType: 'PURCHASE',
+      transactionType: "PURCHASE",
       amountCoins: coins,
       amountMoney: 0,
-      currency: 'LKR',
+      currency: "LKR",
       description: reason,
       referenceId: `manual_${Date.now()}`,
-      status: 'COMPLETED',
-      paymentMethod: 'manual',
+      status: "COMPLETED",
+      paymentMethod: "manual",
       metadata: {
-        payment_method: 'manual',
+        payment_method: "manual",
         admin_id: req.user.id,
         ip_address: req.ip,
-        user_agent: req.get('User-Agent')
-      }
+        user_agent: req.get("User-Agent"),
+      },
     };
 
-    const transaction = await TransactionModel.createTransaction(transactionData, client);
+    const transaction = await TransactionModel.createTransaction(
+      transactionData,
+      client
+    );
     await WalletModel.updateBalance(parseInt(userId), coins, 0, client);
 
     // Log admin action
-    await WalletModel.logSecurityEvent(req.user.id, 'ADMIN_COINS_ADDED', {
-      targetUserId: userId,
-      amount: coins,
-      reason
-    }, client);
+    await WalletModel.logSecurityEvent(
+      req.user.id,
+      "ADMIN_COINS_ADDED",
+      {
+        targetUserId: userId,
+        amount: coins,
+        reason,
+      },
+      client
+    );
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
 
     res.json({
       success: true,
       message: `Successfully added ${coins} coins to user ${userId}`,
-      transaction
+      transaction,
     });
-
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error adding coins manually:', error);
+    await client.query("ROLLBACK");
+    console.error("Error adding coins manually:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to add coins',
-      error: error.message
+      message: "Failed to add coins",
+      error: error.message,
     });
   } finally {
     client.release();
@@ -1491,7 +1564,7 @@ export const convertCurrency = async (req, res) => {
     if (!amount || !from || !to) {
       return res.status(400).json({
         success: false,
-        message: 'Amount, from currency, and to currency are required'
+        message: "Amount, from currency, and to currency are required",
       });
     }
 
@@ -1504,7 +1577,7 @@ export const convertCurrency = async (req, res) => {
     if (!conversionResult.success) {
       return res.status(400).json({
         success: false,
-        message: conversionResult.message
+        message: conversionResult.message,
       });
     }
 
@@ -1514,14 +1587,13 @@ export const convertCurrency = async (req, res) => {
       fromCurrency: from.toUpperCase(),
       toCurrency: to.toUpperCase(),
       convertedAmount: conversionResult.convertedAmount,
-      exchangeRate: conversionResult.rate
+      exchangeRate: conversionResult.rate,
     });
-
   } catch (error) {
-    console.error('Error converting currency:', error);
+    console.error("Error converting currency:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to convert currency'
+      message: "Failed to convert currency",
     });
   }
 };
@@ -1539,26 +1611,26 @@ export const setWalletPin = async (req, res) => {
     if (pin !== confirmPin) {
       return res.status(400).json({
         success: false,
-        message: 'PIN confirmation does not match'
+        message: "PIN confirmation does not match",
       });
     }
 
     if (pin.length !== 6 || !/^\d+$/.test(pin)) {
       return res.status(400).json({
         success: false,
-        message: 'PIN must be exactly 6 digits'
+        message: "PIN must be exactly 6 digits",
       });
     }
 
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     // Check if user already has a PIN
     const existingPinStatus = await WalletModel.isPinSet(userId);
     if (existingPinStatus) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       return res.status(400).json({
         success: false,
-        message: 'PIN already set. Use PIN change functionality instead.'
+        message: "PIN already set. Use PIN change functionality instead.",
       });
     }
 
@@ -1570,30 +1642,34 @@ export const setWalletPin = async (req, res) => {
 
     if (result) {
       // Log PIN setup
-      await WalletModel.logSecurityEvent(userId, 'PIN_SET', {
-        timestamp: new Date().toISOString()
-      }, client);
+      await WalletModel.logSecurityEvent(
+        userId,
+        "PIN_SET",
+        {
+          timestamp: new Date().toISOString(),
+        },
+        client
+      );
 
-      await client.query('COMMIT');
+      await client.query("COMMIT");
 
       res.json({
         success: true,
-        message: 'PIN set successfully'
+        message: "PIN set successfully",
       });
     } else {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       res.status(404).json({
         success: false,
-        message: 'Wallet not found'
+        message: "Wallet not found",
       });
     }
-
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error setting wallet PIN:', error);
+    await client.query("ROLLBACK");
+    console.error("Error setting wallet PIN:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to set PIN'
+      message: "Failed to set PIN",
     });
   } finally {
     client.release();
@@ -1611,44 +1687,44 @@ export const verifyWalletPin = async (req, res) => {
     if (!pin || pin.length !== 6) {
       return res.status(400).json({
         success: false,
-        message: 'Valid 6-digit PIN required'
+        message: "Valid 6-digit PIN required",
       });
     }
 
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     // Get wallet PIN information using model
     const walletPinInfo = await WalletModel.getWalletPinInfo(userId);
 
     if (!walletPinInfo) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       return res.status(404).json({
         success: false,
-        message: 'Wallet not found'
+        message: "Wallet not found",
       });
     }
 
-    if (walletPinInfo.wallet_status !== 'ACTIVE') {
-      await client.query('ROLLBACK');
+    if (walletPinInfo.wallet_status !== "ACTIVE") {
+      await client.query("ROLLBACK");
       return res.status(400).json({
         success: false,
-        message: 'Wallet is not active'
+        message: "Wallet is not active",
       });
     }
 
     if (walletPinInfo.failed_pin_attempts >= 3) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       return res.status(400).json({
         success: false,
-        message: 'Too many failed attempts. Wallet locked. Contact support.'
+        message: "Too many failed attempts. Wallet locked. Contact support.",
       });
     }
 
     if (!walletPinInfo.pin_hash) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       return res.status(400).json({
         success: false,
-        message: 'PIN not set. Please set a PIN first.'
+        message: "PIN not set. Please set a PIN first.",
       });
     }
 
@@ -1660,56 +1736,75 @@ export const verifyWalletPin = async (req, res) => {
       await WalletModel.resetFailedPinAttempts(userId, client);
 
       // Log successful PIN verification
-      await WalletModel.logSecurityEvent(userId, 'PIN_VERIFIED', {
-        timestamp: new Date().toISOString(),
-        ip_address: req.ip
-      }, client);
+      await WalletModel.logSecurityEvent(
+        userId,
+        "PIN_VERIFIED",
+        {
+          timestamp: new Date().toISOString(),
+          ip_address: req.ip,
+        },
+        client
+      );
 
-      await client.query('COMMIT');
+      await client.query("COMMIT");
 
       // Set PIN verification flag in request for subsequent operations
       req.pinVerified = true;
 
       res.json({
         success: true,
-        message: 'PIN verified successfully'
+        message: "PIN verified successfully",
       });
     } else {
       // Increment failed attempts
-      const updatedAttempts = await WalletModel.incrementFailedPinAttempts(userId, client);
+      const updatedAttempts = await WalletModel.incrementFailedPinAttempts(
+        userId,
+        client
+      );
 
       // Log failed PIN attempt
-      await WalletModel.logSecurityEvent(userId, 'PIN_FAILED', {
-        attempts: updatedAttempts.failed_pin_attempts,
-        ip_address: req.ip
-      }, client);
+      await WalletModel.logSecurityEvent(
+        userId,
+        "PIN_FAILED",
+        {
+          attempts: updatedAttempts.failed_pin_attempts,
+          ip_address: req.ip,
+        },
+        client
+      );
 
       // Lock wallet if too many attempts
       if (updatedAttempts.failed_pin_attempts >= 3) {
-        await WalletModel.lockWallet(userId, 'Too many failed PIN attempts', client);
+        await WalletModel.lockWallet(
+          userId,
+          "Too many failed PIN attempts",
+          client
+        );
 
-        await client.query('COMMIT');
+        await client.query("COMMIT");
 
         return res.status(400).json({
           success: false,
-          message: 'Too many failed attempts. Wallet has been locked for security.'
+          message:
+            "Too many failed attempts. Wallet has been locked for security.",
         });
       }
 
-      await client.query('COMMIT');
+      await client.query("COMMIT");
 
       res.status(400).json({
         success: false,
-        message: `Invalid PIN. ${3 - updatedAttempts.failed_pin_attempts} attempts remaining.`
+        message: `Invalid PIN. ${
+          3 - updatedAttempts.failed_pin_attempts
+        } attempts remaining.`,
       });
     }
-
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error verifying wallet PIN:', error);
+    await client.query("ROLLBACK");
+    console.error("Error verifying wallet PIN:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to verify PIN'
+      message: "Failed to verify PIN",
     });
   } finally {
     client.release();
@@ -1721,8 +1816,8 @@ export const checkPinStatus = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    console.log('User role:', req.user.role);
-    console.log('User ID:', userId);
+    console.log("User role:", req.user.role);
+    console.log("User ID:", userId);
 
     // Get comprehensive PIN status using model
     const walletPinInfo = await WalletModel.getWalletPinInfo(userId);
@@ -1730,13 +1825,15 @@ export const checkPinStatus = async (req, res) => {
     if (!walletPinInfo) {
       return res.status(404).json({
         success: false,
-        message: 'Wallet not found'
+        message: "Wallet not found",
       });
     }
 
     const pinSet = !!walletPinInfo.pin_hash;
     const isLocked = walletPinInfo.failed_pin_attempts >= 3;
-    const suspiciousActivity = await WalletModel.checkSuspiciousActivity(userId);
+    const suspiciousActivity = await WalletModel.checkSuspiciousActivity(
+      userId
+    );
 
     res.json({
       success: true,
@@ -1745,14 +1842,13 @@ export const checkPinStatus = async (req, res) => {
       walletStatus: walletPinInfo.wallet_status,
       failedAttempts: walletPinInfo.failed_pin_attempts,
       lastAttempt: walletPinInfo.last_pin_attempt,
-      securityStatus: suspiciousActivity?.security_status || 'NORMAL'
+      securityStatus: suspiciousActivity?.security_status || "NORMAL",
     });
-
   } catch (error) {
-    console.error('Error checking PIN status:', error);
+    console.error("Error checking PIN status:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to check PIN status'
+      message: "Failed to check PIN status",
     });
   }
 };
@@ -1768,59 +1864,67 @@ export const changeWalletPin = async (req, res) => {
     if (!currentPin || !newPin || !confirmNewPin) {
       return res.status(400).json({
         success: false,
-        message: 'Current PIN, new PIN, and confirmation are required'
+        message: "Current PIN, new PIN, and confirmation are required",
       });
     }
 
     if (newPin !== confirmNewPin) {
       return res.status(400).json({
         success: false,
-        message: 'New PIN confirmation does not match'
+        message: "New PIN confirmation does not match",
       });
     }
 
     if (newPin.length !== 6 || !/^\d+$/.test(newPin)) {
       return res.status(400).json({
         success: false,
-        message: 'New PIN must be exactly 6 digits'
+        message: "New PIN must be exactly 6 digits",
       });
     }
 
     if (currentPin === newPin) {
       return res.status(400).json({
         success: false,
-        message: 'New PIN must be different from current PIN'
+        message: "New PIN must be different from current PIN",
       });
     }
 
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     // Verify current PIN first
     const walletPinInfo = await WalletModel.getWalletPinInfo(userId);
 
     if (!walletPinInfo || !walletPinInfo.pin_hash) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       return res.status(400).json({
         success: false,
-        message: 'No existing PIN found'
+        message: "No existing PIN found",
       });
     }
 
-    const isCurrentPinValid = await bcrypt.compare(currentPin, walletPinInfo.pin_hash);
+    const isCurrentPinValid = await bcrypt.compare(
+      currentPin,
+      walletPinInfo.pin_hash
+    );
 
     if (!isCurrentPinValid) {
       await WalletModel.incrementFailedPinAttempts(userId, client);
 
-      await WalletModel.logSecurityEvent(userId, 'PIN_CHANGE_FAILED', {
-        reason: 'Invalid current PIN',
-        ip_address: req.ip
-      }, client);
+      await WalletModel.logSecurityEvent(
+        userId,
+        "PIN_CHANGE_FAILED",
+        {
+          reason: "Invalid current PIN",
+          ip_address: req.ip,
+        },
+        client
+      );
 
-      await client.query('COMMIT');
+      await client.query("COMMIT");
 
       return res.status(400).json({
         success: false,
-        message: 'Current PIN is incorrect'
+        message: "Current PIN is incorrect",
       });
     }
 
@@ -1828,35 +1932,43 @@ export const changeWalletPin = async (req, res) => {
     const newPinHash = await bcrypt.hash(newPin, 14);
 
     // Update with new PIN
-    const result = await WalletModel.updateWalletPin(userId, newPinHash, client);
+    const result = await WalletModel.updateWalletPin(
+      userId,
+      newPinHash,
+      client
+    );
 
     if (result) {
       // Log PIN change
-      await WalletModel.logSecurityEvent(userId, 'PIN_CHANGED', {
-        timestamp: new Date().toISOString(),
-        ip_address: req.ip
-      }, client);
+      await WalletModel.logSecurityEvent(
+        userId,
+        "PIN_CHANGED",
+        {
+          timestamp: new Date().toISOString(),
+          ip_address: req.ip,
+        },
+        client
+      );
 
-      await client.query('COMMIT');
+      await client.query("COMMIT");
 
       res.json({
         success: true,
-        message: 'PIN changed successfully'
+        message: "PIN changed successfully",
       });
     } else {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       res.status(500).json({
         success: false,
-        message: 'Failed to update PIN'
+        message: "Failed to update PIN",
       });
     }
-
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error changing wallet PIN:', error);
+    await client.query("ROLLBACK");
+    console.error("Error changing wallet PIN:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to change PIN'
+      message: "Failed to change PIN",
     });
   } finally {
     client.release();
@@ -1871,46 +1983,50 @@ export const resetWalletPin = async (req, res) => {
     const { userId } = req.body;
     const adminId = req.user.id;
 
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== "admin") {
       return res.status(403).json({
         success: false,
-        message: 'Admin access required'
+        message: "Admin access required",
       });
     }
 
     if (!userId) {
       return res.status(400).json({
         success: false,
-        message: 'User ID is required'
+        message: "User ID is required",
       });
     }
 
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     // Reset PIN and unlock wallet using model functions
     await WalletModel.updateWalletPin(userId, null, client);
     await WalletModel.unlockWallet(userId, adminId, client);
 
     // Log admin action
-    await WalletModel.logSecurityEvent(adminId, 'ADMIN_PIN_RESET', {
-      targetUserId: userId,
-      timestamp: new Date().toISOString(),
-      ip_address: req.ip
-    }, client);
+    await WalletModel.logSecurityEvent(
+      adminId,
+      "ADMIN_PIN_RESET",
+      {
+        targetUserId: userId,
+        timestamp: new Date().toISOString(),
+        ip_address: req.ip,
+      },
+      client
+    );
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
 
     res.json({
       success: true,
-      message: 'PIN reset successfully'
+      message: "PIN reset successfully",
     });
-
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('Error resetting PIN:', error);
+    await client.query("ROLLBACK");
+    console.error("Error resetting PIN:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to reset PIN'
+      message: "Failed to reset PIN",
     });
   } finally {
     client.release();
@@ -1924,57 +2040,60 @@ export const getRestaurantEarnings = async (req, res) => {
 
     // Get restaurant profile ID from user
     const restaurantQuery = await pool.query(
-      'SELECT id, name FROM restaurant_profiles WHERE user_id = $1',
+      "SELECT id, name FROM restaurant_profiles WHERE user_id = $1",
       [userId]
     );
 
     if (restaurantQuery.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Restaurant profile not found'
+        message: "Restaurant profile not found",
       });
     }
 
     const restaurant = restaurantQuery.rows[0];
 
     // Get dashboard stats
-    const stats = await RestaurantEarningsModel.getRestaurantDashboardStats(restaurant.id);
+    const stats = await RestaurantEarningsModel.getRestaurantDashboardStats(
+      restaurant.id
+    );
 
     // Get pending earnings details
-    const pendingEarnings = await RestaurantEarningsModel.getPendingEarnings(restaurant.id);
+    const pendingEarnings = await RestaurantEarningsModel.getPendingEarnings(
+      restaurant.id
+    );
 
     res.json({
       success: true,
       restaurant: {
         id: restaurant.id,
-        name: restaurant.name
+        name: restaurant.name,
       },
       stats: {
         pending: {
           count: parseInt(stats.pending_count) || 0,
           coins: parseInt(stats.pending_coins) || 0,
-          lkr: parseFloat(stats.pending_lkr) || 0
+          lkr: parseFloat(stats.pending_lkr) || 0,
         },
         paid: {
           count: parseInt(stats.paid_count) || 0,
           coins: parseInt(stats.total_earned_coins) || 0,
-          lkr: parseFloat(stats.total_earned_lkr) || 0
+          lkr: parseFloat(stats.total_earned_lkr) || 0,
         },
         total: {
           transactions: parseInt(stats.total_transactions) || 0,
           grossCoins: parseInt(stats.total_gross_coins) || 0,
-          commissionCoins: parseInt(stats.total_commission_coins) || 0
-        }
+          commissionCoins: parseInt(stats.total_commission_coins) || 0,
+        },
       },
-      pendingEarnings
+      pendingEarnings,
     });
-
   } catch (error) {
-    console.error('Error getting restaurant earnings:', error);
+    console.error("Error getting restaurant earnings:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get earnings',
-      error: error.message
+      message: "Failed to get earnings",
+      error: error.message,
     });
   }
 };
@@ -1986,34 +2105,36 @@ export const getRestaurantMonthlySummary = async (req, res) => {
     const { year } = req.query;
 
     const restaurantQuery = await pool.query(
-      'SELECT id FROM restaurant_profiles WHERE user_id = $1',
+      "SELECT id FROM restaurant_profiles WHERE user_id = $1",
       [userId]
     );
 
     if (restaurantQuery.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Restaurant profile not found'
+        message: "Restaurant profile not found",
       });
     }
 
     const restaurantId = restaurantQuery.rows[0].id;
     const currentYear = year || new Date().getFullYear();
 
-    const monthlyData = await RestaurantEarningsModel.getEarningsByMonth(restaurantId, currentYear);
+    const monthlyData = await RestaurantEarningsModel.getEarningsByMonth(
+      restaurantId,
+      currentYear
+    );
 
     res.json({
       success: true,
       year: currentYear,
-      monthlyData
+      monthlyData,
     });
-
   } catch (error) {
-    console.error('Error getting monthly summary:', error);
+    console.error("Error getting monthly summary:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get monthly summary',
-      error: error.message
+      message: "Failed to get monthly summary",
+      error: error.message,
     });
   }
 };
@@ -2025,14 +2146,14 @@ export const getRestaurantEarningsHistory = async (req, res) => {
     const { startDate, endDate, status } = req.query;
 
     const restaurantQuery = await pool.query(
-      'SELECT id FROM restaurant_profiles WHERE user_id = $1',
+      "SELECT id FROM restaurant_profiles WHERE user_id = $1",
       [userId]
     );
 
     if (restaurantQuery.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Restaurant profile not found'
+        message: "Restaurant profile not found",
       });
     }
 
@@ -2047,15 +2168,14 @@ export const getRestaurantEarningsHistory = async (req, res) => {
 
     res.json({
       success: true,
-      history
+      history,
     });
-
   } catch (error) {
-    console.error('Error getting earnings history:', error);
+    console.error("Error getting earnings history:", error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get earnings history',
-      error: error.message
+      message: "Failed to get earnings history",
+      error: error.message,
     });
   }
 };

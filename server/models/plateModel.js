@@ -23,7 +23,7 @@ export async function getCustomerId(id) {
 
 export async function getItems(cartId) {
     const query = `
-      SELECT ci.id, ci.quantity, mi.name, mi.price, mi.image_url
+      SELECT ci.id, ci.menu_item_id , ci.quantity, mi.name, mi.price, mi.image_url
       FROM cart_items ci
       JOIN menu_items mi ON ci.menu_item_id = mi.id
       WHERE ci.cart_id = $1;

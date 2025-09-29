@@ -34,7 +34,6 @@ function CartPage() {
   setChecking(true);
 
   let shortages = [];
-  const mockWalletBalance = 5000; // pretend API result
 
   try {
     // Step 1: Inventory check
@@ -50,15 +49,33 @@ function CartPage() {
       console.log("All items are available!");
       setCanProceed(true);
     }
+     console.log("========================================",cartItems)
+    try {
+      const walletReturn = await axiosInstance.post('/api/wallet/checkSufficient',{
+        coins: lkrToCoins(totalPrice)
+      });
 
-    // Step 2: Wallet check
-    if (mockWalletBalance < grandTotal) {
-      setError(
-        `Insufficient wallet balance. Available: Rs.${mockWalletBalance}, required: Rs.${grandTotal}`
-      );
+    } catch (err) {
+      console.error("Wallet error:", err?.response?.data || err.message);
+      setError(err?.response?.data?.message || "Something went wrong while reserving. Please try again.");
       setCanProceed(false);
       return;
     }
+
+    /**try {
+      const walletReturn = await axiosInstance.post('/api/wallet/spend', {
+      coins: reservationFee,
+      reservationId: reservationId,  // Use reservationId instead of orderId
+      description: `  Reservation ${reservationId}`,
+    });
+
+    } catch (err) {
+      console.error("Wallet error:", err?.response?.data || err.message);
+      setError(err?.response?.data?.message || "Something went wrong while reserving. Please try again.");
+      return;
+    }**/
+
+   
 
     // Step 3: If everything passes
     console.log("E-wallet balance is sufficient. Proceeding to checkout...");
@@ -151,6 +168,11 @@ function CartPage() {
   const handleBack = () => {
     navigate(-1);
   };
+
+  const lkrToCoins = (lkr) => {
+      const exchangeRate = 50;
+      return lkr/exchangeRate;
+    }
 
   return (
     <section className="bg-emerald-50/50 dark:bg-gray-900 min-h-screen py-16">
@@ -282,7 +304,7 @@ function CartPage() {
                       {item.name}
                     </h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Rs. {item.price * item.quantity}
+                      {lkrToCoins(item.price * item.quantity)} Coins
                     </p>
 
                     {/* Quantity Controls */}
@@ -328,15 +350,15 @@ function CartPage() {
               </h3>
               <div className="flex justify-between text-gray-600 dark:text-gray-300 mb-2">
                 <span>Subtotal</span>
-                <span>Rs. {totalPrice.toFixed(2)}</span>
+                <span>{lkrToCoins(totalPrice)} Coins</span>
               </div>
               <div className="flex justify-between text-gray-600 dark:text-gray-300 mb-4">
                 <span>Delivery</span>
-                <span>Rs. {deliveryFee.toFixed(2)}</span>
+                <span>{lkrToCoins(deliveryFee)} Coins</span>
               </div>
               <div className="flex justify-between font-bold text-gray-800 dark:text-white text-lg mb-6">
                 <span>Total</span>
-                <span>Rs. {grandTotal.toFixed(2)}</span>
+                <span>{lkrToCoins(grandTotal)} Coins</span>
               </div>
 
               {/* Delivery or Pickup Option */}
