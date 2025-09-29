@@ -63,6 +63,26 @@ async function adjustQuantity(id, restaurant_id, adjustment) {
 }
 
 
+// Deduct from inventory
+async function deductInventory(itemId, qty, client) {
+  await client.query(
+    `UPDATE inventory_items
+     SET quantity = quantity - $1, updated_at = NOW()
+     WHERE id = $2`,
+    [qty, itemId]
+  );
+}
+
+// Log adjustment
+async function logInventoryAdjustment(itemId, qty, reason, client) {
+  await client.query(
+    `INSERT INTO inventory_adjustments (item_id, direction, quantity, reason)
+     VALUES ($1, 'out', $2, $3)`,
+    [itemId, qty, reason]
+  );
+}
+
+
 export default {
   create,
   getAll,
@@ -72,4 +92,7 @@ export default {
   adjustQuantity,
   findByName,
   findByNameExcludingId,
+  deductInventory,
+  logInventoryAdjustment,
 };
+

@@ -1,108 +1,187 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { ClipboardList, ArrowLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import axiosInstance from "../../utils/axiosInstance";
+import { useAuth } from "../../utils/AuthContext";
 
-function OrderPage() {
-  const navigate = useNavigate();
+export default function CustomerOrders() {
+  const [orders, setOrders] = useState([]);
+  const { user } = useAuth();
 
-  const handleBack = () => {
-    navigate(-1);
+  // Fetch orders for logged-in customer
+  useEffect(() => {
+    const fetchOrders = async () => {
+      if (!user?.id) return;
+      try {
+        const res = await axiosInstance.get(`/api/orders/my/${user.id}`);
+        setOrders(res.data.orders || []);
+      } catch (err) {
+        console.error("Failed to fetch orders", err);
+      }
+    };
+    fetchOrders();
+  }, [user?.id]);
+
+  // Sort newest → oldest
+  const sorted = useMemo(
+    () =>
+      [...orders].sort((a, b) =>
+        a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0
+      ),
+    [orders]
+  );
+
+  // Cancel order handler
+  const handleCancel = async (orderId, restaurantOrderId) => {
+  try {
+    const res = await axiosInstance.post(`/api/orders/restaurant-order/${restaurantOrderId}/cancel`);
+    if (res.data?.success) {
+      setOrders(prev =>
+        prev.map(o => {
+          if (o.orderId !== orderId) return o;
+          return {
+            ...o,
+            restaurants: o.restaurants.map(r => {
+              const rid = r.restaurantOrderId;
+              if (String(rid) === String(restaurantOrderId)) {
+                return { ...r, status: "cancelled" };
+              }
+              return r;
+            })
+          };
+        })
+      );
+    } else {
+      alert(res.data?.message || "Failed to cancel");
+    }
+  } catch (err) {
+    console.error("Cancel order failed", err);
+    alert(err.response?.data?.message || "Failed to cancel order");
+  }
+};
+
+
+  // Status badge styling
+  const statusBadge = (status) => {
+    const base = "rounded-full px-2 py-0.5 text-xs font-semibold capitalize ";
+    switch (status) {
+      case "cancelled":
+      case "denied":
+        return (
+          base + "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-100"
+        );
+      case "partially_denied":
+        return (
+          base +
+          "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-100"
+        );
+      case "accepted":
+      case "preparing":
+        return (
+          base + "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100"
+        );
+      case "delivered":
+      case "completed":
+        return (
+          base +
+          "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-100"
+        );
+      case "pending":
+        return (
+          base + "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200"
+        );
+      default:
+        return (
+          base + "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200"
+        );
+    }
   };
 
-  // Dummy order data
-  const [order] = useState({
-    orderId: "ORD123456",
-    status: "Processing",
-    items: [
-      { id: 1, name: "Cheese Burger", quantity: 2, price: 450 },
-      { id: 2, name: "Veg Pizza", quantity: 1, price: 1200 },
-      { id: 3, name: "Coke", quantity: 3, price: 150 },
-    ],
-  });
-
-  const total = order.items.reduce(
-    (acc, item) => acc + item.quantity * item.price,
-    0
-  );
-
   return (
-    <section className="bg-emerald-50/50 dark:bg-gray-900 min-h-screen py-16">
-      <div className="container mx-auto px-6">
-        {/* Back Button */}
-        <button
-          onClick={handleBack}
-          className="flex items-center text-emerald-600 dark:text-emerald-400 font-semibold mb-6 text-xl"
-        >
-          <ArrowLeft className="mr-2" size={30} /> Back
-        </button>
+    <div className="p-6">
+      <h1 className="mb-4 text-2xl font-bold text-gray-900 dark:text-gray-100">
+        My Orders
+      </h1>
 
-        {/* Title */}
-        <motion.h2
-          className="text-3xl md:text-5xl font-extrabold text-gray-800 dark:text-white text-center mb-12 flex items-center justify-center gap-5"
-          initial={{ opacity: 0, y: -30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-        >
-          <ClipboardList className="w-10 md:w-16 h-10 md:h-16 text-emerald-500" />
-          Order Details
-        </motion.h2>
+      <div className="space-y-6">
+        {sorted.map((order) => (
+          <div
+            key={order.orderId}
+            className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900"
+          >
+            {/* Order header */}
+            <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-6 py-3 dark:border-gray-700 dark:bg-gray-800">
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                Order ID: #{order.orderId}
+              </span>
+            </div>
 
-        {/* Order Info */}
-        <motion.div
-          className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 max-w-3xl mx-auto"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <div className="flex justify-between mb-6">
-            <span className="text-gray-700 dark:text-gray-300 font-semibold">
-              Order ID:
-            </span>
-            <span className="text-gray-800 dark:text-white font-bold">
-              {order.orderId}
-            </span>
-          </div>
+            {/* Sub-orders (per restaurant) */}
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {order.restaurants.map((rest, idx) => (
+                <div key={idx} className="p-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      {rest.restaurantName}
+                    </h2>
+                    
+                    <span className={statusBadge(rest.status)}>
+                      {rest.status}
+                    </span>
+                  </div>
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50 text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                      <tr>
+                        <th className="px-4 py-2 text-left font-semibold">
+                          Item
+                        </th>
+                        <th className="px-4 py-2 text-left font-semibold">
+                          Quantity
+                        </th>
+                        <th className="px-4 py-2 text-left font-semibold">
+                          Price
+                        </th>
+                        
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                      {rest.items.map((item, i) => (
+                        <tr key={i}>
+                          <td className="px-4 py-2 text-gray-900 dark:text-gray-100">
+                            {item.name}
+                          </td>
+                          <td className="px-4 py-2 text-gray-700 dark:text-gray-300">
+                            {item.qty}
+                          </td>
+                          <td className="px-4 py-2 text-gray-700 dark:text-gray-300">
+                            Rs. {item.price}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table><br></br>
+                  {/* Cancel button only when status is pending */}
+                            {rest.status === "pending" && (
 
-          <div className="flex justify-between mb-6">
-            <span className="text-gray-700 dark:text-gray-300 font-semibold">
-              Status:
-            </span>
-            <span className="text-emerald-500 font-bold">{order.status}</span>
-          </div>
-
-          <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
-            Items
-          </h3>
-          <div className="space-y-4">
-            {order.items.map((item) => (
-              <div
-                key={item.id}
-                className="flex justify-between bg-emerald-50 dark:bg-gray-700 rounded-xl p-4"
-              >
-                <div>
-                  <h4 className="font-semibold text-gray-800 dark:text-white">
-                    {item.name}
-                  </h4>
-                  <p className="text-gray-600 dark:text-gray-300">
-                    Quantity: {item.quantity}
-                  </p>
+                              <button
+                                onClick={() => handleCancel(order.orderId, rest.restaurantOrderId )}
+                                className="rounded-lg bg-red-500 px-3 py-1 text-xs font-semibold text-white hover:bg-red-600"
+                              >
+                                Cancel
+                              </button>
+                            )}
                 </div>
-                <div className="text-gray-800 dark:text-white font-bold">
-                  Rs. {item.price * item.quantity}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
 
-          <div className="flex justify-between mt-6 pt-4 border-t border-gray-200 dark:border-gray-600 text-lg font-bold text-gray-800 dark:text-white">
-            <span>Total</span>
-            <span>Rs. {total}</span>
+            {/* Order footer */}
+            <div className="flex justify-between items-center border-t border-gray-200 bg-gray-50 px-6 py-3 text-sm dark:border-gray-700 dark:bg-gray-800">
+              <span className="text-gray-600 dark:text-gray-400">
+                Placed on: {order.createdAt}
+              </span>
+              
+            </div>
           </div>
-        </motion.div>
+        ))}
       </div>
-    </section>
+    </div>
   );
 }
-
-export default OrderPage;

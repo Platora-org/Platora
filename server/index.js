@@ -24,11 +24,17 @@ import adminAvailabilityRoutes from "./routes/adminAvailabilityRoutes.js";
 import walletRoutes from './routes/walletRoutes.js';
 import cron from 'node-cron';
 import * as WalletService from './services/walletService.js';
+
+import customerOrders from './routes/orderRoutes.js';
+import orderRoutes from "./routes/orderRoutes.js";
+import restaurantOrderRoutes from "./routes/restaurantOrderRoutes.js";
+
 import reservationRoutes from "./routes/reservationRoutes.js";
 import adminReservationsRoutes from "./routes/adminReservationRoutes.js";
 import recipeRoutes from './routes/recipeRoutes.js';
 import restaurantProfileRoutes from './routes/restaurantProfileRoutes.js'; 
 import securutyAuditRoutes from './routes/securityAuditRoutes.js';
+
 
 const app = express();
 const port = 3000;
@@ -70,6 +76,8 @@ app.use('/restaurants/menuItems', menuRoutes);
 app.use('/api/recipes', recipeRoutes);
 app.use('/api/restaurant/profile', restaurantProfileRoutes);
 
+app.use('/api/orders', orderRoutes);
+app.use('/api/restaurant-orders', restaurantOrderRoutes);
 
 app.use('/api/restaurant/kyc', kycRoutes);
 app.use('/api/audit', auditRoutes);

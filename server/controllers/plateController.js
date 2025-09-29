@@ -5,9 +5,7 @@ const plateController = {
     try {
 
       const userId = req.user?.id || null;
-      console.log("Users id ------------------",req.user);
       const customerId = await PlateModel.getCustomerId(userId);
-      console.log("customer id ------------------",customerId);
 
       const cart = await PlateModel.getOrCreateCartId(customerId);
       const items = await PlateModel.getItems(cart);

@@ -41,6 +41,7 @@ CREATE TABLE restaurant_profiles (
 );
 
 
+
 -- menu_categories Table
 create table menu_categories (
   id serial primary key,
@@ -63,7 +64,6 @@ create table menu_items (
   created_at timestamptz default now()
 );
 
--------------------------------------------------------------------------------------------------------------------
 --KYC Verification 
 CREATE TABLE kyc_requests (
     id SERIAL PRIMARY KEY,
@@ -110,6 +110,7 @@ CREATE TABLE wallets (
 );
 
 -- Trigger function to auto-update updated_at
+
 CREATE OR REPLACE FUNCTION update_wallets_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -161,6 +162,67 @@ CREATE INDEX idx_kyc_audit_admin ON kyc_audit_logs(admin_id);
 CREATE INDEX idx_kyc_audit_action ON kyc_audit_logs(action);
 CREATE INDEX idx_kyc_audit_created ON kyc_audit_logs(created_at);
 
+
+-- menu_categories Table
+create table menu_categories (
+  id serial primary key,
+  restaurant_id integer not null references restaurant_profiles(id) on delete cascade,
+  name text not null,
+  created_at timestamptz default now()
+);
+
+
+-- menu_items Table
+create table menu_items (
+  id serial primary key,
+  restaurant_id integer not null references restaurant_profiles(id) on delete cascade,
+  category_id integer references menu_categories(id) on delete set null,
+  name text not null,
+  description text,
+  price numeric(10,2) not null,
+  image_url text,
+  is_active boolean default true,
+  created_at timestamptz default now()
+);
+
+--inventory_items table
+CREATE TABLE inventory_items (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL CHECK (name ~ '^[A-Za-z0-9 ]+$'), -- no !@#$, only alphanumeric + spaces
+    unit_id INT NOT NULL REFERENCES units(id) ON DELETE RESTRICT,
+    quantity NUMERIC(12,2) NOT NULL DEFAULT 0,  -- allows fractional quantities (e.g., 0.5 kg)
+    reorder_level NUMERIC(12,2) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now()
+);
+
+--inventory_adjustments table
+CREATE TABLE inventory_adjustments (
+    id SERIAL PRIMARY KEY,
+    item_id INT NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
+    direction VARCHAR(10) NOT NULL CHECK (direction IN ('in','out')),
+    quantity NUMERIC(12,2) NOT NULL CHECK (quantity > 0),
+    reason TEXT,
+    created_at TIMESTAMP DEFAULT now()
+);
+
+--carts table
+CREATE TABLE carts (
+  id SERIAL PRIMARY KEY,
+  customer_id INTEGER REFERENCES customer_profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- cart_items table
+CREATE TABLE cart_items (
+  id SERIAL PRIMARY KEY,
+  cart_id INTEGER NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
+  menu_item_id INTEGER NOT NULL REFERENCES menu_items(id) ON DELETE CASCADE,
+  quantity INTEGER NOT NULL CHECK (quantity > 0),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT cart_item_unique UNIQUE (cart_id, menu_item_id) 
 
 -- Create transactions table
 CREATE TABLE transactions (
@@ -1225,7 +1287,6 @@ CREATE TABLE recipes (
 CREATE TABLE orders (
   id SERIAL PRIMARY KEY,
   customer_id INTEGER REFERENCES customer_profiles(id) ON DELETE CASCADE,
-  cart_id INTEGER REFERENCES carts(id) ON DELETE SET NULL,
   status VARCHAR(20) DEFAULT 'pending', -- pending, completed, cancelled
   total_amount NUMERIC(10,2) NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -1248,6 +1309,7 @@ CREATE TABLE order_items (
   price NUMERIC(10,2) NOT NULL, -- store price at the time of order
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
 
 -- Messages
 CREATE TABLE messages (
