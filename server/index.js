@@ -25,6 +25,7 @@ import walletRoutes from './routes/walletRoutes.js';
 import cron from 'node-cron';
 import * as WalletService from './services/walletService.js';
 import recipeRoutes from './routes/recipeRoutes.js';
+import securutyAuditRoutes from './routes/securityAuditRoutes.js';
 
 const app = express();
 const port = 3000;
@@ -84,6 +85,7 @@ app.use('/api/wallet', (req, res, next) => {
 });
 
 app.use('/api/wallet', walletRoutes);
+app.use('/api/security-audit', securutyAuditRoutes);
 
 
 cron.schedule('0 * * * *', async () => {

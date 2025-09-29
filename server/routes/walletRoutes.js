@@ -447,10 +447,10 @@ router.get('/restaurant/monthly-summary', verifyJWT, getRestaurantMonthlySummary
 router.get('/restaurant/history', verifyJWT, getRestaurantEarningsHistory);
 
 // Admin payout routes
-router.get('/admin/pending-payouts', verifyJWT, checkRole(['admin']), getAdminPendingPayouts);
-router.post('/admin/process-payout', verifyJWT, checkRole(['admin']), processRestaurantPayout);
-router.get('/admin/payout-history', verifyJWT, checkRole(['admin']), getPayoutHistory);
-router.get('/admin/platform-revenue', verifyJWT, checkRole(['admin']), getPlatformRevenueAnalytics);
+router.get('/admin/pending-payouts', verifyJWT, checkRole("admin"), getAdminPendingPayouts);
+router.post('/admin/process-payout', verifyJWT, checkRole("admin"), processRestaurantPayout);
+router.get('/admin/payout-history', verifyJWT, checkRole("admin"), getPayoutHistory);
+router.get('/admin/platform-revenue', verifyJWT, checkRole("admin"), getPlatformRevenueAnalytics);
 
 // Analytics routes
 router.get('/analytics/dashboard', verifyJWT, getDashboardAnalytics);

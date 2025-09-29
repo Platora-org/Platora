@@ -56,6 +56,40 @@ const TransactionList = () => {
     endDate: new Date().toISOString().split('T')[0]
   });
 
+  // Date validation function
+  const validateAndSetDateRange = (field, value) => {
+    const newDateRange = { ...dateRange };
+    
+    if (field === 'startDate') {
+      newDateRange.startDate = value;
+      
+      // If end date is before the new start date, auto-correct end date
+      const startDate = new Date(value);
+      const endDate = new Date(newDateRange.endDate);
+      
+      if (endDate < startDate) {
+        newDateRange.endDate = value;
+        setSuccessMessage('End date automatically adjusted to match start date');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      }
+    } else if (field === 'endDate') {
+      // For end date, only allow if it's not before start date
+      const startDate = new Date(dateRange.startDate);
+      const selectedEndDate = new Date(value);
+      
+      if (selectedEndDate < startDate) {
+        // Auto-correct: set end date to start date
+        newDateRange.endDate = dateRange.startDate;
+        setSuccessMessage('End date cannot be before start date. Adjusted to start date');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } else {
+        newDateRange.endDate = value;
+      }
+    }
+    
+    setDateRange(newDateRange);
+  };
+
   // PDF Generation functions
   const generateInvoice = async (transactionId) => {
     try {
@@ -388,7 +422,7 @@ const TransactionList = () => {
         </div>
       )}
 
-      {/* Enhanced Filters */}
+      {/* Enhanced Filters with Date Validation */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8">
         <div className="flex items-center mb-4">
           <Filter className="w-5 h-5 text-gray-500 mr-2" />
@@ -435,7 +469,8 @@ const TransactionList = () => {
             <input
               type="date"
               value={dateRange.startDate}
-              onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+              max={dateRange.endDate}
+              onChange={(e) => validateAndSetDateRange('startDate', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white"
             />
           </div>
@@ -447,7 +482,8 @@ const TransactionList = () => {
             <input
               type="date"
               value={dateRange.endDate}
-              onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+              min={dateRange.startDate}
+              onChange={(e) => validateAndSetDateRange('endDate', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white"
             />
           </div>
@@ -534,7 +570,7 @@ const TransactionList = () => {
             </div>
             <button
                 onClick={() => generateStatement('custom')}
-                disabled={generatingStatement}
+                disabled={generatingStatement || transactions.length === 0}
                 className="flex items-center justify-center px-6 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-all"
             >
                 {generatingStatement ? (

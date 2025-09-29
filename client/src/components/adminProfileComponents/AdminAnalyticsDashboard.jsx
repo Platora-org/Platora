@@ -18,7 +18,6 @@ import {
   Users,
   CreditCard,
   TrendingUp,
-  Download,
   Calendar,
   Filter,
   DollarSign,
@@ -29,9 +28,7 @@ import {
   AlertCircle,
   RefreshCw,
   BarChart3,
-  FileText,
-  Receipt,
-  TestTube
+  CheckCircle
 } from 'lucide-react';
 
 // Configure axios defaults
@@ -50,58 +47,41 @@ const AnalyticsDashboard = () => {
     startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0]
   });
-  const [exportType, setExportType] = useState('csv');
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [exporting, setExporting] = useState(false);
-  const [dateError, setDateError] = useState('');
 
-  // Date validation function
-  const validateDateRange = (start, end) => {
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    const today = new Date();
+  // Date validation function (same as TransactionList)
+  const validateAndSetDateRange = (field, value) => {
+    const newDateRange = { ...dateRange };
     
-    if (startDate > endDate) {
-      return 'Start date must be before end date';
+    if (field === 'startDate') {
+      newDateRange.startDate = value;
+      
+      // If end date is before the new start date, auto-correct end date
+      const startDate = new Date(value);
+      const endDate = new Date(newDateRange.endDate);
+      
+      if (endDate < startDate) {
+        newDateRange.endDate = value;
+        setSuccessMessage('End date automatically adjusted to match start date');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      }
+    } else if (field === 'endDate') {
+      // For end date, only allow if it's not before start date
+      const startDate = new Date(dateRange.startDate);
+      const selectedEndDate = new Date(value);
+      
+      if (selectedEndDate < startDate) {
+        // Auto-correct: set end date to start date
+        newDateRange.endDate = dateRange.startDate;
+        setSuccessMessage('End date cannot be before start date. Adjusted to start date');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } else {
+        newDateRange.endDate = value;
+      }
     }
     
-    if (startDate > today) {
-      return 'Start date cannot be in the future';
-    }
-    
-    if (endDate > today) {
-      return 'End date cannot be in the future';
-    }
-    
-    const daysDiff = (endDate - startDate) / (1000 * 60 * 60 * 24);
-    if (daysDiff > 365) {
-      return 'Date range cannot exceed 365 days';
-    }
-    
-    if (daysDiff < 0) {
-      return 'Invalid date range';
-    }
-    
-    return '';
-  };
-
-  const handleDateChange = (field, value) => {
-    const newDateRange = { ...dateRange, [field]: value };
-    const validationError = validateDateRange(newDateRange.startDate, newDateRange.endDate);
-    
-    setDateError(validationError);
     setDateRange(newDateRange);
-    
-    // Only reload data if dates are valid
-    if (!validationError) {
-      // Debounce the API call
-      setTimeout(() => {
-        if (JSON.stringify(newDateRange) === JSON.stringify(dateRange)) {
-          loadAnalytics();
-        }
-      }, 500);
-    }
   };
 
   const loadAnalytics = async () => {
@@ -198,63 +178,22 @@ const AnalyticsDashboard = () => {
     }
   };
 
-  const exportData = async () => {
-    // Validate dates before export
-    const validationError = validateDateRange(dateRange.startDate, dateRange.endDate);
-    if (validationError) {
-      setError(`Cannot export: ${validationError}`);
-      return;
-    }
-
-    setExporting(true);
-    try {
-      const params = {
-        startDate: dateRange.startDate,
-        endDate: dateRange.endDate,
-        format: exportType
-      };
-      
-      const response = await api.get('/analytics/export', { 
-        params,
-        responseType: 'blob' // Important for file downloads
-      });
-      
-      if (exportType === 'csv') {
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `analytics-${dateRange.startDate}-to-${dateRange.endDate}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        setSuccessMessage('Analytics data exported to CSV successfully!');
-      } else if (exportType === 'pdf') {
-        const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `analytics-report-${dateRange.startDate}-to-${dateRange.endDate}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        setSuccessMessage('Analytics report exported to PDF successfully!');
-      }
-    } catch (error) {
-      console.error('Error exporting data:', error);
-      setError('Failed to export analytics data. Please try again later.');
-    } finally {
-      setExporting(false);
-    }
+  // Quick date range setter (same as TransactionList)
+  const setQuickDateRange = (days) => {
+    const endDate = new Date();
+    const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
+    
+    const newRange = {
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: endDate.toISOString().split('T')[0]
+    };
+    
+    setDateRange(newRange);
   };
 
   useEffect(() => {
-    const loadData = async () => {
-      await loadAnalytics();
-    };
-    
-    loadData();
-  }, []); // Only load once on mount
+    loadAnalytics();
+  }, [dateRange]); // Reload when date range changes
 
   // Auto-clear messages
   useEffect(() => {
@@ -306,6 +245,23 @@ const AnalyticsDashboard = () => {
     return Object.values(dailyData).sort((a, b) => new Date(a.date) - new Date(b.date));
   };
 
+  // Fixed coins circulation calculation
+  const calculateCoinsInCirculation = () => {
+    if (!analytics?.transactions || !Array.isArray(analytics.transactions)) return 0;
+    
+    let circulation = 0;
+    analytics.transactions.forEach(t => {
+      const coins = parseInt(t.total_coins) || 0;
+      if (t.transaction_type === 'PURCHASE' || t.transaction_type === 'REFUND') {
+        circulation += coins; // Add coins to circulation
+      } else if (t.transaction_type === 'SPEND') {
+        circulation -= coins; // Remove coins from circulation
+      }
+    });
+    
+    return Math.max(0, circulation); // Ensure non-negative
+  };
+
   const COLORS = ['#10b981', '#059669', '#047857', '#065f46', '#064e3b'];
 
   if (loading) {
@@ -324,6 +280,7 @@ const AnalyticsDashboard = () => {
   const transactionData = processTransactionData();
   const restaurantData = processTopRestaurants();
   const trendsChartData = processTrendsData();
+  const coinsInCirculation = calculateCoinsInCirculation();
 
   const StatCard = ({ title, value, subtitle, icon: Icon, color = 'emerald', bgColor = 'emerald' }) => (
     <div className="rounded-xl p-6 border shadow-sm bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700 transition-all hover:shadow-md">
@@ -375,7 +332,7 @@ const AnalyticsDashboard = () => {
           {successMessage && (
             <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 rounded-xl p-4 mb-6">
               <div className="flex items-center">
-                <Download className="w-5 h-5 text-emerald-600 mr-2" />
+                <CheckCircle className="w-5 h-5 text-emerald-600 mr-2" />
                 <p className="text-emerald-700 dark:text-emerald-300">{successMessage}</p>
               </div>
             </div>
@@ -389,126 +346,97 @@ const AnalyticsDashboard = () => {
           </div>
         </div>
 
-
-
-        {/* Date Range Controls */}
-        <div className="rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8 bg-white dark:bg-gray-800">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Start Date
-                </label>
-                <input
-                  type="date"
-                  value={dateRange.startDate}
-                  onChange={(e) => handleDateChange('startDate', e.target.value)}
-                  max={new Date().toISOString().split('T')[0]}
-                  className={`px-4 py-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
-                    dateError ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
-                  }`}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  End Date
-                </label>
-                <input
-                  type="date"
-                  value={dateRange.endDate}
-                  onChange={(e) => handleDateChange('endDate', e.target.value)}
-                  max={new Date().toISOString().split('T')[0]}
-                  className={`px-4 py-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
-                    dateError ? 'border-red-300 focus:ring-red-500' : 'border-gray-300'
-                  }`}
-                />
-              </div>
-              {dateError && (
-                <div className="text-red-600 dark:text-red-400 text-sm mt-6">
-                  <AlertCircle className="w-4 h-4 inline mr-1" />
-                  {dateError}
-                </div>
-              )}
+        {/* Enhanced Filters with Date Validation */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-8">
+          <div className="flex items-center mb-4">
+            <Filter className="w-5 h-5 text-gray-500 mr-2" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Date Range Filters</h3>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={dateRange.startDate}
+                max={dateRange.endDate}
+                onChange={(e) => validateAndSetDateRange('startDate', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white"
+              />
             </div>
             
-            <div className="flex items-center gap-4 ml-auto">
-              <select
-                value={exportType}
-                onChange={(e) => setExportType(e.target.value)}
-                className="px-4 py-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white border-gray-300"
-              >
-                <option value="csv">CSV Format</option>
-                <option value="pdf">PDF Report</option>
-              </select>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                End Date
+              </label>
+              <input
+                type="date"
+                value={dateRange.endDate}
+                min={dateRange.startDate}
+                onChange={(e) => validateAndSetDateRange('endDate', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            
+            <div className="flex items-end">
               <button
-                onClick={exportData}
-                disabled={exporting || !!dateError}
-                className="flex items-center px-4 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={loadAnalytics}
+                className="w-full px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg transition-colors"
               >
-                {exporting ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    Exporting...
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4 mr-2" />
-                    Export {exportType.toUpperCase()}
-                  </>
-                )}
+                Apply Filters
               </button>
             </div>
           </div>
-          
+
           {/* Quick Date Range Buttons */}
-          <div className="flex gap-2 mt-4 flex-wrap">
+          <div className="flex gap-2 flex-wrap">
             <button
-              onClick={() => {
-                const today = new Date();
-                const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-                const newRange = {
-                  startDate: lastWeek.toISOString().split('T')[0],
-                  endDate: today.toISOString().split('T')[0]
-                };
-                setDateRange(newRange);
-                setDateError('');
-                loadAnalytics();
-              }}
-              className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
+              onClick={() => setQuickDateRange(7)}
+              className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
             >
               Last 7 Days
             </button>
             <button
-              onClick={() => {
-                const today = new Date();
-                const lastMonth = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-                const newRange = {
-                  startDate: lastMonth.toISOString().split('T')[0],
-                  endDate: today.toISOString().split('T')[0]
-                };
-                setDateRange(newRange);
-                setDateError('');
-                loadAnalytics();
-              }}
-              className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
+              onClick={() => setQuickDateRange(30)}
+              className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
             >
               Last 30 Days
             </button>
             <button
-              onClick={() => {
-                const today = new Date();
-                const lastQuarter = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000);
-                const newRange = {
-                  startDate: lastQuarter.toISOString().split('T')[0],
-                  endDate: today.toISOString().split('T')[0]
-                };
-                setDateRange(newRange);
-                setDateError('');
-                loadAnalytics();
-              }}
-              className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
+              onClick={() => setQuickDateRange(90)}
+              className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
             >
               Last 90 Days
+            </button>
+            <button
+              onClick={() => {
+                const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+                const endOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
+                const newRange = {
+                  startDate: startOfMonth.toISOString().split('T')[0],
+                  endDate: endOfMonth.toISOString().split('T')[0]
+                };
+                setDateRange(newRange);
+              }}
+              className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
+            >
+              This Month
+            </button>
+            <button
+              onClick={() => {
+                const lastMonth = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
+                const endOfLastMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 0);
+                const newRange = {
+                  startDate: lastMonth.toISOString().split('T')[0],
+                  endDate: endOfLastMonth.toISOString().split('T')[0]
+                };
+                setDateRange(newRange);
+              }}
+              className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
+            >
+              Last Month
             </button>
           </div>
         </div>
@@ -525,8 +453,8 @@ const AnalyticsDashboard = () => {
           />
           <StatCard
             title="Coins in Circulation"
-            value={parseInt(customers.total_coins_in_circulation || 0).toLocaleString()}
-            subtitle={`Avg: ${parseInt(customers.avg_balance_per_customer || 0)} per user`}
+            value={coinsInCirculation.toLocaleString()}
+            subtitle={`Avg: ${customers.total_customers > 0 ? Math.round(coinsInCirculation / customers.total_customers) : 0} per user`}
             icon={Coins}
             color="emerald"
             bgColor="emerald"
