@@ -12,9 +12,9 @@ function CartPage() {
   const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [error, setError] = useState(null);
-  const {user} = useAuth();
+  const { user } = useAuth();
 
-  console.log("let's see what we get==",user)
+  console.log("let's see what we get==", user);
 
   useEffect(() => {
     const fetchCart = async () => {
@@ -31,79 +31,89 @@ function CartPage() {
   const [canProceed, setCanProceed] = useState(false);
 
   const handleCheckout = async () => {
-  setChecking(true);
+    setChecking(true);
 
-  let shortages = [];
+    let shortages = [];
 
-  try {
-    // Step 1: Inventory check
-    const res = await axiosInstance.post("/api/orders/inventoryCheck");
-    console.log("Inventory check response:", res.data);
-    shortages = res.data.shortages || [];
-
-    if (shortages.length > 0) {
-      setError(shortages);
-      setCanProceed(false);
-      return;
-    } else {
-      console.log("All items are available!");
-      setCanProceed(true);
-    }
-     console.log("========================================",cartItems)
     try {
-      const walletReturn = await axiosInstance.post('/api/wallet/checkSufficient',{
-        coins: lkrToCoins(totalPrice)
-      });
+      // Step 1: Inventory check
+      const res = await axiosInstance.post("/api/orders/inventoryCheck");
+      console.log("Inventory check response:", res.data);
+      shortages = res.data.shortages || [];
 
+      if (shortages.length > 0) {
+        setError(shortages);
+        setCanProceed(false);
+        return;
+      } else {
+        console.log("All items are available!");
+        setCanProceed(true);
+      }
+     
+      try {
+        const walletReturn = await axiosInstance.post(
+          "/api/wallet/checkSufficient",
+          {
+            coins: lkrToCoins(totalPrice),
+          }
+        );
+        console.log(walletReturn)
+        setCanProceed(true);
+      } catch (err) {
+        console.error("Wallet error:", err?.response?.data || err.message);
+        setError(
+          err?.response?.data?.message ||
+            "Something went wrong while reserving. Please try again."
+        );
+        setCanProceed(false);
+        return;
+      }
+
+      for (const item of cartItems) {
+         console.log("========================================", item);
+        try {
+          const walletReturn = await axiosInstance.post("/api/wallet/spend", {
+            coins: lkrToCoins(item.price),
+            menu_item_id: item.menu_item_id, // Use reservationId instead of orderId
+            description: `Order ${item.name}`,
+          });
+
+          console.log("Wallet success:", walletReturn.data);
+        } catch (err) {
+          console.error("Wallet error:", err?.response?.data || err.message);
+          setError(
+            err?.response?.data?.message ||
+              "Something went wrong while reserving. Please try again."
+          );
+          return; // stop further processing if one fails
+        }
+      }
+
+      // Step 3: If everything passes
+      console.log("E-wallet balance is sufficient. Proceeding to checkout...");
     } catch (err) {
-      console.error("Wallet error:", err?.response?.data || err.message);
-      setError(err?.response?.data?.message || "Something went wrong while reserving. Please try again.");
+      console.error("Error checking inventory or wallet:", err);
+      setError("Failed to check availability. Try again.");
       setCanProceed(false);
-      return;
+    } finally {
+      setChecking(false);
     }
 
-    /**try {
-      const walletReturn = await axiosInstance.post('/api/wallet/spend', {
-      coins: reservationFee,
-      reservationId: reservationId,  // Use reservationId instead of orderId
-      description: `  Reservation ${reservationId}`,
-    });
+    // Now both variables are in scope here
+    if (shortages.length === 0) {
+      try {
+        const res = await axiosInstance.post("/api/orders/checkout", {});
 
-    } catch (err) {
-      console.error("Wallet error:", err?.response?.data || err.message);
-      setError(err?.response?.data?.message || "Something went wrong while reserving. Please try again.");
-      return;
-    }**/
-
-   
-
-    // Step 3: If everything passes
-    console.log("E-wallet balance is sufficient. Proceeding to checkout...");
-  } catch (err) {
-    console.error("Error checking inventory or wallet:", err);
-    setError("Failed to check availability. Try again.");
-    setCanProceed(false);
-  } finally {
-    setChecking(false);
-  }
-
-  // Now both variables are in scope here
-  if (mockWalletBalance >= grandTotal && shortages.length === 0) {
-    try {
-      const res = await axiosInstance.post("/api/orders/checkout", {
-      });
-
-      console.log("Order placed:", res.data);
-      alert("Checkout successful!");
-      setCartItems([]);
-      window.dispatchEvent(new Event("cartUpdated"));
-    } catch (err) {
-      console.error("Checkout failed:", err);
-      setError("Checkout failed. Try again.");
+        console.log("Order placed:", res.data);
+        alert("Checkout successful!");
+        setCartItems([]);
+        window.dispatchEvent(new Event("cartUpdated"));
+      } catch (err) {
+        console.error("Checkout failed:", err);
+        setError("Checkout failed. Try again.");
+      }
     }
-  }
-};
-
+  };
 
   // Remove item
   const removeItem = async (id) => {
@@ -170,9 +180,9 @@ function CartPage() {
   };
 
   const lkrToCoins = (lkr) => {
-      const exchangeRate = 50;
-      return lkr/exchangeRate;
-    }
+    const exchangeRate = 50;
+    return lkr / exchangeRate;
+  };
 
   return (
     <section className="bg-emerald-50/50 dark:bg-gray-900 min-h-screen py-16">

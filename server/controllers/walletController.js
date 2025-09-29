@@ -1108,8 +1108,10 @@ export const spendCoins = async (req, res) => {
       requirePin = coins > 100 ? true : false,
     } = req.body;
 
+    let restaurantId = null;
+
     if(menu_item_id){
-      const restaurantId = await menuModel.getRestaurantIdFromMenu(menu_item_id);
+      restaurantId = await menuModel.getRestaurantIdFromMenu(menu_item_id);
     }
   
     if (!coins || coins <= 0) {
