@@ -1,46 +1,26 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import axiosInstance from "../../utils/axiosInstance";
+import { useAuth } from "../../utils/AuthContext";
 
-const FAKE_ORDERS = [
-  {
-    orderId: 2001,
-    createdAt: "2025-08-10",
-    status: "partially_denied", // master order status
-    restaurants: [
-      {
-        restaurantName: "Pizza Hut",
-        status: "accepted",
-        items: [
-          { name: "Large Pepperoni Pizza", qty: 1, price: 2500 },
-          { name: "Garlic Bread", qty: 2, price: 900 },
-        ],
-      },
-      {
-        restaurantName: "KFC",
-        status: "denied",
-        items: [{ name: "Zinger Burger", qty: 2, price: 1600 }],
-      },
-    ],
-  },
-  {
-    orderId: 2002,
-    createdAt: "2025-08-05",
-    status: "completed",
-    restaurants: [
-      {
-        restaurantName: "Dominos",
-        status: "delivered",
-        items: [
-          { name: "Cheese Pizza", qty: 1, price: 2200 },
-          { name: "Coke 1L", qty: 1, price: 500 },
-        ],
-      },
-    ],
-  },
-];
+export default function CustomerOrders() {
+  const [orders, setOrders] = useState([]);
+  const { user } = useAuth();
 
-export default function CustomerOrdersTable() {
-  const [orders] = useState(FAKE_ORDERS);
+  // Fetch orders for logged-in customer
+  useEffect(() => {
+    const fetchOrders = async () => {
+      if (!user?.id) return;
+      try {
+        const res = await axiosInstance.get(`/api/orders/my/${user.id}`);
+        setOrders(res.data.orders || []);
+      } catch (err) {
+        console.error("Failed to fetch orders", err);
+      }
+    };
+    fetchOrders();
+  }, [user?.id]);
 
+  // Sort newest → oldest
   const sorted = useMemo(
     () =>
       [...orders].sort((a, b) =>
@@ -49,23 +29,69 @@ export default function CustomerOrdersTable() {
     [orders]
   );
 
+  // Cancel order handler
+  const handleCancel = async (orderId, restaurantOrderId) => {
+  try {
+    const res = await axiosInstance.post(`/api/orders/restaurant-order/${restaurantOrderId}/cancel`);
+    if (res.data?.success) {
+      setOrders(prev =>
+        prev.map(o => {
+          if (o.orderId !== orderId) return o;
+          return {
+            ...o,
+            restaurants: o.restaurants.map(r => {
+              const rid = r.restaurantOrderId;
+              if (String(rid) === String(restaurantOrderId)) {
+                return { ...r, status: "cancelled" };
+              }
+              return r;
+            })
+          };
+        })
+      );
+    } else {
+      alert(res.data?.message || "Failed to cancel");
+    }
+  } catch (err) {
+    console.error("Cancel order failed", err);
+    alert(err.response?.data?.message || "Failed to cancel order");
+  }
+};
+
+
+  // Status badge styling
   const statusBadge = (status) => {
-    const base =
-      "rounded-full px-2 py-0.5 text-xs font-semibold capitalize ";
+    const base = "rounded-full px-2 py-0.5 text-xs font-semibold capitalize ";
     switch (status) {
       case "cancelled":
       case "denied":
-        return base + "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-100";
+        return (
+          base + "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-100"
+        );
       case "partially_denied":
-        return base + "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-100";
+        return (
+          base +
+          "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-100"
+        );
       case "accepted":
       case "preparing":
-        return base + "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100";
+        return (
+          base + "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100"
+        );
       case "delivered":
       case "completed":
-        return base + "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-100";
+        return (
+          base +
+          "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-100"
+        );
+      case "pending":
+        return (
+          base + "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200"
+        );
       default:
-        return base + "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200";
+        return (
+          base + "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200"
+        );
     }
   };
 
@@ -81,14 +107,14 @@ export default function CustomerOrdersTable() {
             key={order.orderId}
             className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900"
           >
-            {/* Master order header */}
+            {/* Order header */}
             <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-6 py-3 dark:border-gray-700 dark:bg-gray-800">
               <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                 Order ID: #{order.orderId}
               </span>
-              <span className={statusBadge(order.status)}>{order.status}</span>
             </div>
 
+            {/* Sub-orders (per restaurant) */}
             <div className="divide-y divide-gray-200 dark:divide-gray-700">
               {order.restaurants.map((rest, idx) => (
                 <div key={idx} className="p-6">
@@ -96,6 +122,7 @@ export default function CustomerOrdersTable() {
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                       {rest.restaurantName}
                     </h2>
+                    
                     <span className={statusBadge(rest.status)}>
                       {rest.status}
                     </span>
@@ -112,6 +139,7 @@ export default function CustomerOrdersTable() {
                         <th className="px-4 py-2 text-left font-semibold">
                           Price
                         </th>
+                        
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -129,19 +157,27 @@ export default function CustomerOrdersTable() {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </table><br></br>
+                  {/* Cancel button only when status is pending */}
+                            {rest.status === "pending" && (
+
+                              <button
+                                onClick={() => handleCancel(order.orderId, rest.restaurantOrderId )}
+                                className="rounded-lg bg-red-500 px-3 py-1 text-xs font-semibold text-white hover:bg-red-600"
+                              >
+                                Cancel
+                              </button>
+                            )}
                 </div>
               ))}
             </div>
 
-            {/* Master order footer */}
-            <div className="flex justify-end border-t border-gray-200 bg-gray-50 px-6 py-3 dark:border-gray-700 dark:bg-gray-800">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Overall Status:{" "}
-                <span className={statusBadge(order.status)}>
-                  {order.status}
-                </span>
+            {/* Order footer */}
+            <div className="flex justify-between items-center border-t border-gray-200 bg-gray-50 px-6 py-3 text-sm dark:border-gray-700 dark:bg-gray-800">
+              <span className="text-gray-600 dark:text-gray-400">
+                Placed on: {order.createdAt}
               </span>
+              
             </div>
           </div>
         ))}

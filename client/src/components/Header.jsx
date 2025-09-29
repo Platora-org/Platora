@@ -65,7 +65,8 @@ const Header = ({ isMenuOpen, setIsMenuOpen }) => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
 
-    // Initial fetch
+    if(getUserRole() == "customer"){
+      // Initial fetch
     fetchCartCount();
 
     // Listen for cartUpdated event
@@ -76,6 +77,9 @@ const Header = ({ isMenuOpen, setIsMenuOpen }) => {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener("cartUpdated", handleCartUpdate);
     };
+    }
+
+    
   }, []);
 
   // Render navigation items

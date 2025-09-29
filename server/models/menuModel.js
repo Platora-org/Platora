@@ -61,3 +61,4 @@ export async function deleteMenuItem(id, restaurant_id) {
   );
   return result.rows[0];
 }
+

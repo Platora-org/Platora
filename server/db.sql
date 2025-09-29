@@ -189,12 +189,40 @@ CREATE TABLE carts (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
---cart_items table
+-- cart_items table
 CREATE TABLE cart_items (
   id SERIAL PRIMARY KEY,
   cart_id INTEGER NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
   menu_item_id INTEGER NOT NULL REFERENCES menu_items(id) ON DELETE CASCADE,
   quantity INTEGER NOT NULL CHECK (quantity > 0),
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT cart_item_unique UNIQUE (cart_id, menu_item_id) 
+);
+
+--orders table
+CREATE TABLE orders (
+  id SERIAL PRIMARY KEY,
+  customer_id INTEGER REFERENCES customer_profiles(id) ON DELETE CASCADE,
+  status VARCHAR(20) DEFAULT 'pending', -- pending, completed, cancelled
+  total_amount NUMERIC(10,2) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE restaurant_orders (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+  restaurant_id INTEGER REFERENCES restaurant_profiles(id) ON DELETE CASCADE,
+  status VARCHAR(20) DEFAULT 'pending', -- pending, accepted, denied, preparing, ready, delivered
+  subtotal NUMERIC(10,2) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE order_items (
+  id SERIAL PRIMARY KEY,
+  restaurant_order_id INTEGER REFERENCES restaurant_orders(id) ON DELETE CASCADE,
+  menu_item_id INTEGER REFERENCES menu_items(id) ON DELETE CASCADE,
+  quantity INTEGER NOT NULL CHECK (quantity > 0),
+  price NUMERIC(10,2) NOT NULL, -- store price at the time of order
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
