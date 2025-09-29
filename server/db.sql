@@ -163,28 +163,6 @@ CREATE INDEX idx_kyc_audit_action ON kyc_audit_logs(action);
 CREATE INDEX idx_kyc_audit_created ON kyc_audit_logs(created_at);
 
 
--- menu_categories Table
-create table menu_categories (
-  id serial primary key,
-  restaurant_id integer not null references restaurant_profiles(id) on delete cascade,
-  name text not null,
-  created_at timestamptz default now()
-);
-
-
--- menu_items Table
-create table menu_items (
-  id serial primary key,
-  restaurant_id integer not null references restaurant_profiles(id) on delete cascade,
-  category_id integer references menu_categories(id) on delete set null,
-  name text not null,
-  description text,
-  price numeric(10,2) not null,
-  image_url text,
-  is_active boolean default true,
-  created_at timestamptz default now()
-);
-
 --inventory_items table
 CREATE TABLE inventory_items (
     id SERIAL PRIMARY KEY,
@@ -205,24 +183,6 @@ CREATE TABLE inventory_adjustments (
     reason TEXT,
     created_at TIMESTAMP DEFAULT now()
 );
-
---carts table
-CREATE TABLE carts (
-  id SERIAL PRIMARY KEY,
-  customer_id INTEGER REFERENCES customer_profiles(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- cart_items table
-CREATE TABLE cart_items (
-  id SERIAL PRIMARY KEY,
-  cart_id INTEGER NOT NULL REFERENCES carts(id) ON DELETE CASCADE,
-  menu_item_id INTEGER NOT NULL REFERENCES menu_items(id) ON DELETE CASCADE,
-  quantity INTEGER NOT NULL CHECK (quantity > 0),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  CONSTRAINT cart_item_unique UNIQUE (cart_id, menu_item_id) 
 
 -- Create transactions table
 CREATE TABLE transactions (
@@ -1134,144 +1094,7 @@ UPDATE reservation_time_slots SET start_time = TIME '17:30' WHERE label ILIKE '%
 UPDATE reservation_time_slots SET start_time = TIME '18:00' WHERE label ILIKE '%6:00 PM%';
 
 
-  CREATE SEQUENCE IF NOT EXISTS reservation_seq START 1;
-
-  /*RESERVATIONS CORE
-   Depends on:
-     - users(id)
-     - food_court_table(id)
-     - reservation_time_slots(id)
-   ========================================================= */
-
-/* 1) Enum for reservation status (idempotent) */
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'reservation_status') THEN
-    CREATE TYPE reservation_status AS ENUM ('pending','confirmed','cancelled','completed','no_show');
-  END IF;
-END $$;
-
-/* 2) reservations table */
-CREATE TABLE IF NOT EXISTS reservations (
-  id             SERIAL PRIMARY KEY,
-  customer_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  reserved_date  DATE NOT NULL,
-  time_slot_id   INTEGER NOT NULL REFERENCES reservation_time_slots(id) ON DELETE RESTRICT,
-  guests         INTEGER NOT NULL CHECK (guests > 0),
-  total_fee      NUMERIC(10,2) NOT NULL DEFAULT 0,
-  notes          TEXT,
-  status         reservation_status NOT NULL DEFAULT 'pending',
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- Helpful indexes
-CREATE INDEX IF NOT EXISTS idx_reservations_date         ON reservations(reserved_date);
-CREATE INDEX IF NOT EXISTS idx_reservations_slot         ON reservations(time_slot_id);
-CREATE INDEX IF NOT EXISTS idx_reservations_customer     ON reservations(customer_user_id);
-CREATE INDEX IF NOT EXISTS idx_reservations_date_slot    ON reservations(reserved_date, time_slot_id);
-
-/* 3) Trigger to auto-touch updated_at */
-CREATE OR REPLACE FUNCTION trg_set_timestamp()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
-BEGIN
-  NEW.updated_at := NOW();
-  RETURN NEW;
-END $$;
-
-DROP TRIGGER IF EXISTS set_timestamp_on_reservations ON reservations;
-CREATE TRIGGER set_timestamp_on_reservations
-BEFORE UPDATE ON reservations
-FOR EACH ROW
-EXECUTE FUNCTION trg_set_timestamp();
-
-/* 4) Junction: which table(s) are booked by a reservation
-      We also store (reserved_date, time_slot_id) and (is_active) so we
-      can enforce a partial unique index without subqueries. */
-CREATE TABLE IF NOT EXISTS reservation_tables (
-  id             SERIAL PRIMARY KEY,
-  reservation_id INTEGER NOT NULL REFERENCES reservations(id) ON DELETE CASCADE,
-  table_id       INTEGER NOT NULL REFERENCES food_court_table(id) ON DELETE RESTRICT,
-
-  -- Copied from parent reservation for constraint/indexing
-  reserved_date  DATE    NOT NULL,
-  time_slot_id   INTEGER NOT NULL,
-
-  -- Set true for 'pending'/'confirmed', false otherwise (kept in sync by triggers)
-  is_active      BOOLEAN NOT NULL DEFAULT TRUE,
-
-  -- Same table cannot be added twice to the same reservation
-  UNIQUE (reservation_id, table_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_resv_tables_resv_id        ON reservation_tables(reservation_id);
-CREATE INDEX IF NOT EXISTS idx_resv_tables_table_id       ON reservation_tables(table_id);
-CREATE INDEX IF NOT EXISTS idx_resv_tables_date_slot      ON reservation_tables(reserved_date, time_slot_id);
-CREATE INDEX IF NOT EXISTS idx_resv_tables_active_flag    ON reservation_tables(is_active);
-
-/* 5) NO DOUBLE-BOOKING:
-      Only one active booking per (table_id, date, slot).
-      Using a partial unique index with an immutable predicate. */
-CREATE UNIQUE INDEX IF NOT EXISTS uniq_active_table_date_slot
-  ON reservation_tables (table_id, reserved_date, time_slot_id)
-  WHERE is_active;
-
-/* 6) Keep reservation_tables in sync with its parent (date/slot/is_active) */
-CREATE OR REPLACE FUNCTION reservation_tables_sync_from_parent()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
-DECLARE
-  p_date DATE;
-  p_slot INTEGER;
-  p_status reservation_status;
-BEGIN
-  SELECT r.reserved_date, r.time_slot_id, r.status
-    INTO p_date, p_slot, p_status
-  FROM reservations r
-  WHERE r.id = NEW.reservation_id;
-
-  IF p_date IS NULL OR p_slot IS NULL THEN
-    RAISE EXCEPTION 'Parent reservation % is missing date or slot', NEW.reservation_id;
-  END IF;
-
-  NEW.reserved_date := p_date;
-  NEW.time_slot_id  := p_slot;
-  NEW.is_active     := (p_status IN ('pending','confirmed'));
-
-  RETURN NEW;
-END $$;
-
--- before INSERT/UPDATE of reservation_id on reservation_tables
-DROP TRIGGER IF EXISTS trg_resv_tables_sync_bi ON reservation_tables;
-CREATE TRIGGER trg_resv_tables_sync_bi
-BEFORE INSERT OR UPDATE OF reservation_id
-ON reservation_tables
-FOR EACH ROW
-EXECUTE FUNCTION reservation_tables_sync_from_parent();
-
-/* 7) When a reservation changes (date, slot, status), push updates to children */
-CREATE OR REPLACE FUNCTION reservation_push_changes_to_children()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
-DECLARE
-  active_now BOOLEAN;
-BEGIN
-  active_now := (NEW.status IN ('pending','confirmed'));
-
-  -- Sync children with new parent fields
-  UPDATE reservation_tables t
-     SET reserved_date = NEW.reserved_date,
-         time_slot_id  = NEW.time_slot_id,
-         is_active     = active_now
-   WHERE t.reservation_id = NEW.id;
-
-  RETURN NEW;
-END $$;
-
-DROP TRIGGER IF EXISTS trg_reservation_push_updates ON reservations;
-CREATE TRIGGER trg_reservation_push_updates
-AFTER UPDATE OF reserved_date, time_slot_id, status
-ON reservations
-FOR EACH ROW
-EXECUTE FUNCTION reservation_push_changes_to_children();
+CREATE SEQUENCE IF NOT EXISTS reservation_seq START 1;
 
 CREATE TABLE recipes (
     id SERIAL PRIMARY KEY,
