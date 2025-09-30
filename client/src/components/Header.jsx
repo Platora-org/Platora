@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Menu, X, Utensils, ShoppingCart } from 'lucide-react';
+import { Menu, X, Utensils, ShoppingCart, Coins, Wallet } from 'lucide-react';
 import { Link } from "react-router-dom";
 import ProfileButton from "./ProfileButton";
 import { useAuth } from "../utils/AuthContext";
@@ -35,7 +35,9 @@ const navigationConfig = {
 
 const Header = ({ isMenuOpen, setIsMenuOpen }) => {
   const [scrolled, setScrolled] = useState(false);
-  const [cartItems, setCartItems] = useState(0); // cart count
+  const [cartItems, setCartItems] = useState(0);
+  const [walletBalance, setWalletBalance] = useState(null);
+  const [loadingWallet, setLoadingWallet] = useState(false);
   const { logout, user } = useAuth();
 
   // Determine user role
@@ -54,10 +56,29 @@ const Header = ({ isMenuOpen, setIsMenuOpen }) => {
   const fetchCartCount = async () => {
     try {
       const res = await axiosInstance.get("/api/carts/count");
-      // Adjust based on backend response
       setCartItems(res.data.count || res.data.totalItems || 0);
     } catch (err) {
       console.error("Failed to fetch cart count:", err);
+    }
+  };
+
+  // Fetch wallet balance from backend
+  const fetchWalletBalance = async () => {
+    try {
+      setLoadingWallet(true);
+      const res = await axiosInstance.get("/api/wallet");
+      
+      // Handle different response structures
+      if (res.data.success) {
+        setWalletBalance(res.data.data?.balance_coins || res.data.wallet?.balance_coins || 0);
+      } else {
+        setWalletBalance(res.data.balance_coins || 0);
+      }
+    } catch (err) {
+      console.error("Failed to fetch wallet balance:", err);
+      setWalletBalance(0);
+    } finally {
+      setLoadingWallet(false);
     }
   };
 
@@ -65,22 +86,30 @@ const Header = ({ isMenuOpen, setIsMenuOpen }) => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
 
-    if(getUserRole() == "customer"){
-      // Initial fetch
-    fetchCartCount();
+    if (getUserRole() === "customer") {
+      // Initial fetch for cart and wallet
+      fetchCartCount();
+      fetchWalletBalance();
 
-    // Listen for cartUpdated event
-    const handleCartUpdate = () => fetchCartCount();
-    window.addEventListener("cartUpdated", handleCartUpdate);
+      // Listen for cart updates
+      const handleCartUpdate = () => fetchCartCount();
+      window.addEventListener("cartUpdated", handleCartUpdate);
+
+      // Listen for wallet updates (you can dispatch this event after purchases/spending)
+      const handleWalletUpdate = () => fetchWalletBalance();
+      window.addEventListener("walletUpdated", handleWalletUpdate);
+
+      return () => {
+        window.removeEventListener('scroll', handleScroll);
+        window.removeEventListener("cartUpdated", handleCartUpdate);
+        window.removeEventListener("walletUpdated", handleWalletUpdate);
+      };
+    }
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener("cartUpdated", handleCartUpdate);
     };
-    }
-
-    
-  }, []);
+  }, [user]);
 
   // Render navigation items
   const renderNavItems = (isMobile = false) => {
@@ -167,7 +196,25 @@ const Header = ({ isMenuOpen, setIsMenuOpen }) => {
           </nav>
         )}
 
-        <div className="flex items-center space-x-8">
+        <div className="flex items-center space-x-4">
+          {/* Wallet Balance - Only for customers */}
+          {currentUserRole === 'customer' && (
+            <Link 
+              to="/customerprofile/wallet" 
+              className="hidden md:flex items-center space-x-2 px-4 py-2 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white transition-all duration-300 shadow-sm hover:shadow-md"
+              title="View Wallet"
+            >
+              <Coins className="w-5 h-5" />
+              {loadingWallet ? (
+                <span className="text-sm font-medium">...</span>
+              ) : (
+                <span className="text-sm font-semibold">
+                  {walletBalance !== null ? walletBalance.toLocaleString() : '0'}
+                </span>
+              )}
+            </Link>
+          )}
+
           {/* Shopping Cart Icon */}
           {(currentUserRole === 'unregistered' || currentUserRole === 'customer') && (
             <Link 
@@ -176,7 +223,7 @@ const Header = ({ isMenuOpen, setIsMenuOpen }) => {
             >
               <ShoppingCart className="w-6 h-6" />
               {cartItems > 0 && (
-                <span className="absolute -top-2 -right-2 bg-emerald-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                <span className="absolute -top-2 -right-2 bg-emerald-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full font-semibold">
                   {cartItems}
                 </span>
               )}
@@ -209,27 +256,54 @@ const Header = ({ isMenuOpen, setIsMenuOpen }) => {
       {(currentUserRole === 'unregistered' || currentUserRole === 'customer') && (
         <div
           className={`md:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 overflow-hidden transition-all duration-300 ${
-            isMenuOpen ? 'max-h-[500px] opacity-100 py-4 px-6 mt-2' : 'max-h-0 opacity-0 py-0 px-6'
+            isMenuOpen ? 'max-h-[600px] opacity-100 py-4 px-6 mt-2' : 'max-h-0 opacity-0 py-0 px-6'
           }`}
         >
           <nav className="flex flex-col space-y-4">
             {renderNavItems(true)}
-            {renderCTA(true)}
+
+            {/* Wallet Balance in Mobile Menu */}
+            {currentUserRole === 'customer' && (
+              <Link 
+                to="/customerprofile/wallet" 
+                className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 text-white"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <div className="flex items-center space-x-2">
+                  <Wallet className="w-5 h-5" />
+                  <span className="font-medium">Wallet Balance</span>
+                </div>
+                {loadingWallet ? (
+                  <span className="text-sm">...</span>
+                ) : (
+                  <div className="flex items-center space-x-1">
+                    <Coins className="w-4 h-4" />
+                    <span className="font-bold">
+                      {walletBalance !== null ? walletBalance.toLocaleString() : '0'}
+                    </span>
+                  </div>
+                )}
+              </Link>
+            )}
 
             {/* Shopping Cart Icon in Mobile Menu */}
             <Link 
               to="/Plate" 
-              className="flex items-center space-x-2 text-gray-700 dark:text-gray-300 hover:text-emerald-500 dark:hover:text-emerald-400 transition relative"
+              className="flex items-center justify-between text-gray-700 dark:text-gray-300 hover:text-emerald-500 dark:hover:text-emerald-400 transition"
               onClick={() => setIsMenuOpen(false)}
             >
-              <ShoppingCart className="w-5 h-5" />
-              <span>Cart</span>
+              <div className="flex items-center space-x-2">
+                <ShoppingCart className="w-5 h-5" />
+                <span>Cart</span>
+              </div>
               {cartItems > 0 && (
-                <span className="absolute -top-2 -right-0.5 bg-emerald-500 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">
-                  {cartItems} 
+                <span className="bg-emerald-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
+                  {cartItems}
                 </span>
               )}
             </Link>
+
+            {renderCTA(true)}
           </nav>
         </div>
       )}

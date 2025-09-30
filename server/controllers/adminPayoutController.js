@@ -47,10 +47,13 @@ export const processRestaurantPayout = async (req, res) => {
     
     // Get restaurant info
     const restaurantQuery = await client.query(
-      'SELECT name, email FROM restaurant_profiles WHERE id = $1',
+      `SELECT rp.restaurant_name, u.email 
+      FROM restaurant_profiles rp
+      JOIN users u ON rp.user_id = u.id
+      WHERE rp.id = $1`,
       [restaurantId]
     );
-    
+        
     if (restaurantQuery.rows.length === 0) {
       await client.query('ROLLBACK');
       return res.status(404).json({
