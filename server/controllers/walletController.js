@@ -1150,8 +1150,10 @@ export const spendCoins = async (req, res) => {
       commissionCoins,
       netCoins: restaurantCoins
     };
+    if(restaurantId){
+      await RestaurantEarningsModel.createEarning(earningData, client);
+    }
     
-    await RestaurantEarningsModel.createEarning(earningData, client);
 
     // Record platform commission
     const commissionData = {
@@ -1161,7 +1163,10 @@ export const spendCoins = async (req, res) => {
       commissionPercentage
     };
     
-    await RestaurantEarningsModel.createCommission(commissionData, client);
+    if(restaurantId){
+      await RestaurantEarningsModel.createCommission(commissionData, client);
+    }
+    
 
     // Log spending event
     await WalletModel.logSecurityEvent(userId, 'COINS_SPENT', {
