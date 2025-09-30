@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
-import { ShoppingCart, UtensilsCrossed } from "lucide-react"; // Added an icon for the message
+import { ShoppingCart, UtensilsCrossed } from "lucide-react";
 import { useParams } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import axiosInstance from "../utils/axiosInstance";
 
 function MenuPage() {
@@ -10,17 +10,18 @@ function MenuPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // ⭐ 1. Updated fetch logic to always keep `menuItems` as an array
+    // ⭐ Search + Sort state
+    const [filter, setFilter] = useState("");
+    const [sortBy, setSortBy] = useState("name-asc"); // default sort
+
     useEffect(() => {
         const fetchMenu = async () => {
             try {
                 setLoading(true);
                 const res = await axiosInstance.get(`/restaurants/menu/${id}`);
-                // If the API returns a valid array of items, set it
                 if (Array.isArray(res.data)) {
                     setMenuItems(res.data);
                 } else {
-                    // Otherwise, set an empty array to indicate no items
                     setMenuItems([]);
                 }
             } catch (err) {
@@ -33,11 +34,10 @@ function MenuPage() {
         fetchMenu();
     }, [id]);
 
-    
     const lkrToCoins = (lkr) => {
       const exchangeRate = 50;
-      return lkr/exchangeRate;
-    }
+      return lkr / exchangeRate;
+    };
 
     const addToCart = async (menuItemId) => {
         try {
@@ -48,10 +48,39 @@ function MenuPage() {
         }
     };
 
+    // ⭐ Filter + Sort combined
+    const filteredAndSortedItems = useMemo(() => {
+        let items = menuItems.filter((item) =>
+            item.name.toLowerCase().includes(filter.toLowerCase())
+        );
+
+        switch (sortBy) {
+            case "name-asc":
+                items = [...items].sort((a, b) =>
+                    a.name.localeCompare(b.name)
+                );
+                break;
+            case "name-desc":
+                items = [...items].sort((a, b) =>
+                    b.name.localeCompare(a.name)
+                );
+                break;
+            case "price-asc":
+                items = [...items].sort((a, b) => a.price - b.price);
+                break;
+            case "price-desc":
+                items = [...items].sort((a, b) => b.price - a.price);
+                break;
+            default:
+                break;
+        }
+
+        return items;
+    }, [menuItems, filter, sortBy]);
+
     if (loading) return <p className="text-center py-10 dark:text-gray-300">Loading menu...</p>;
     if (error) return <p className="text-center py-10 text-red-500">{error}</p>;
 
-    // ⭐ 2. Return a single <section> and handle conditional logic inside
     return (
         <section
             id="menu"
@@ -67,11 +96,34 @@ function MenuPage() {
                     Menu
                 </motion.h2>
 
-                {/* Check if the menuItems array has items */}
-                {menuItems.length > 0 ? (
-                    // If YES, render the grid of menu items
+                {/* ⭐ Search + Sort Bar */}
+                <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-10">
+                    <input
+                        type="text"
+                        placeholder="Search menu items..."
+                        value={filter}
+                        onChange={(e) =>
+                            setFilter(e.target.value.replace(/[^a-zA-Z\s]/g, ""))
+                        }
+                        className="w-full sm:w-1/2 px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+
+                    <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className="w-full sm:w-1/4 px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                    >
+                        <option value="name-asc">Name (A → Z)</option>
+                        <option value="name-desc">Name (Z → A)</option>
+                        <option value="price-asc">Price (Low → High)</option>
+                        <option value="price-desc">Price (High → Low)</option>
+                    </select>
+                </div>
+
+                {/* Conditional rendering */}
+                {filteredAndSortedItems.length > 0 ? (
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {menuItems.map((item) => (
+                        {filteredAndSortedItems.map((item) => (
                             <motion.div
                                 key={item.id}
                                 className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 group flex flex-col"
@@ -80,12 +132,17 @@ function MenuPage() {
                             >
                                 <div className="relative w-full h-52 overflow-hidden">
                                     <img
-                                        src={item.image_url ? `${import.meta.env.VITE_API_URL}${item.image_url}`: "https://placehold.co/600x400/e0e0e0/757575?text=No+Image"}
+                                        src={
+                                            item.image_url
+                                                ? `${import.meta.env.VITE_API_URL}${item.image_url}`
+                                                : "https://placehold.co/600x400/e0e0e0/757575?text=No+Image"
+                                        }
                                         alt={item.name}
                                         className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
                                         onError={(e) => {
                                             e.target.onerror = null;
-                                            e.target.src = "https://placehold.co/600x400/e0e0e0/757575?text=No+Image";
+                                            e.target.src =
+                                                "https://placehold.co/600x400/e0e0e0/757575?text=No+Image";
                                         }}
                                     />
                                 </div>
@@ -97,7 +154,7 @@ function MenuPage() {
                                         {item.description}
                                     </p>
                                     <p className="text-lg font-semibold text-emerald-600 dark:text-emerald-400 mb-4">
-                                         {lkrToCoins(item.price)} Coins
+                                        {lkrToCoins(item.price)} Coins
                                     </p>
                                     <button
                                         onClick={() => addToCart(item.id)}
@@ -111,19 +168,23 @@ function MenuPage() {
                         ))}
                     </div>
                 ) : (
-                    // If NO, render a user-friendly message
                     <motion.div
                         className="text-center py-20"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5 }}
                     >
-                        <UtensilsCrossed className="mx-auto text-emerald-400 dark:text-emerald-500 mb-4" size={48} />
+                        <UtensilsCrossed
+                            className="mx-auto text-emerald-400 dark:text-emerald-500 mb-4"
+                            size={48}
+                        />
                         <h3 className="text-2xl font-bold text-gray-700 dark:text-gray-300">
-                            Menu Coming Soon!
+                            {filter ? "No items match your search." : "Menu Coming Soon!"}
                         </h3>
                         <p className="text-gray-500 dark:text-gray-400 mt-2">
-                            This restaurant hasn't added any items to their menu yet. Please check back later.
+                            {filter
+                                ? "Try a different search term."
+                                : "This restaurant hasn't added any items to their menu yet. Please check back later."}
                         </p>
                     </motion.div>
                 )}
