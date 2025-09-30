@@ -63,23 +63,37 @@ async function adjustQuantity(id, restaurant_id, adjustment) {
 }
 
 
-// Deduct from inventory
-async function deductInventory(itemId, qty, client) {
-  await client.query(
+/// Deduct from inventory
+async function deductInventory(restaurantId, itemId, qty, client) {
+  const result = await client.query(
     `UPDATE inventory_items
-     SET quantity = quantity - $1, updated_at = NOW()
-     WHERE id = $2`,
-    [qty, itemId]
+     SET quantity = GREATEST(0, quantity - $1), updated_at = NOW()
+     WHERE id = $2 AND restaurant_id = $3
+     RETURNING *`,
+    [qty, itemId, restaurantId]
   );
+  return result;
 }
 
 // Log adjustment
-async function logInventoryAdjustment(itemId, qty, reason, client) {
-  await client.query(
-    `INSERT INTO inventory_adjustments (item_id, direction, quantity, reason)
-     VALUES ($1, 'out', $2, $3)`,
-    [itemId, qty, reason]
+async function logInventoryAdjustment(restaurantId, itemId, ItemName, qty, reason, client) {
+  const result = await client.query(
+    `INSERT INTO inventory_adjustments (restaurant_id, item_id, item_name, direction, quantity, reason)
+     VALUES ($1, $2, $3,'out', $4, $5)
+     RETURNING *`,
+    [restaurantId, itemId, ItemName, qty, reason]
   );
+  return result;
+}
+
+// get item name by inventoruItemId
+async function getItemNameFromInventoryId(inventoryId, client) {
+  const result = await client.query(
+    `SELECT name FROM inventory_items 
+     WHERE id = $1 `,
+    [inventoryId]
+  );
+  return result.rows.length > 0 ? result.rows[0].name : null;
 }
 
 
@@ -94,5 +108,6 @@ export default {
   findByNameExcludingId,
   deductInventory,
   logInventoryAdjustment,
+  getItemNameFromInventoryId,
 };
 
