@@ -228,7 +228,7 @@ function RegisterPage() {
                                             type="text"
                                             placeholder="Enter restaurant name"
                                             value={restaurantName}
-                                            onChange={handleFirstNameChange}
+                                            onChange={handleRestaurantNameChange}
                                             className="block text-sm w-full px-4 py-2.5 text-gray-700 placeholder-gray-400 bg-white border border-gray-200 rounded-lg dark:placeholder-gray-600 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-500 focus:outline-none focus:ring-0"
                                         />
                                     </motion.div>

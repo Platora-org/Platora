@@ -51,8 +51,8 @@ export const createPayout = async (data, client = null) => {
     INSERT INTO payout_history (
       restaurant_id, period_month, period_year,
       total_coins, amount_lkr, bank_account, bank_name,
-      payout_date, proof_url, processed_by, status, notes
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $9, $10, $11)
+      payout_date, proof_url, processed_by, status, notes, metadata
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $9, $10, $11, $12)
     RETURNING *
   `;
   
@@ -67,7 +67,8 @@ export const createPayout = async (data, client = null) => {
     data.proofUrl || null,
     data.processedBy,
     data.status || 'completed',
-    data.notes || null
+    data.notes || null,
+    JSON.stringify(data.metadata || {})
   ];
   
   const result = await queryClient.query(query, values);
