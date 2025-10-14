@@ -14,17 +14,13 @@ import {
   setCancelRequested,
   getOccupiedTableIds,
   cancelIfEligible24h,
-  
 } from "../models/reservationModel.js";
 
 const reservationController = {
-  /* GET /api/reservations/time-slots  */
   async listTimeSlots(req, res) {
     try {
       const { rows } = await req.app.get("db").query(
-        `SELECT id, label, sort_idx
-           FROM reservation_time_slots
-          ORDER BY sort_idx ASC, id ASC`
+        `SELECT id, label, sort_idx FROM reservation_time_slots ORDER BY sort_idx ASC, id ASC`
       );
       res.json({ slots: rows });
     } catch (e) {
@@ -33,7 +29,6 @@ const reservationController = {
     }
   },
 
-  /* POST /api/reservations/check-availability */
   async checkAvailability(req, res) {
     try {
       const { date, slot_id, slot_label, table_ids = [] } = req.body || {};
@@ -70,11 +65,9 @@ const reservationController = {
     }
   },
 
-  /* POST /api/reservations */
   async createReservationHandler(req, res) {
     try {
       const userId = req.user.id;
-
       const { date, slot_id, time_label, guests, table_ids = [], special_request } = req.body || {};
       if (!date) return res.status(400).json({ message: "date is required" });
       if (!slot_id && !time_label)
@@ -83,7 +76,6 @@ const reservationController = {
       if (!Array.isArray(table_ids) || table_ids.length === 0)
         return res.status(400).json({ message: "table_ids required" });
 
-      // tolerant slot lookup
       let slot = null;
       if (slot_id) slot = await getSlotById(Number(slot_id));
       else {
@@ -92,7 +84,6 @@ const reservationController = {
       }
       if (!slot) return res.status(400).json({ message: "Invalid time slot" });
 
-      // blackout checks
       if (await isDateFullDayBlackout(date)) {
         return res.status(409).json({ message: "This date is closed (holiday)" });
       }
@@ -101,7 +92,6 @@ const reservationController = {
         return res.status(409).json({ message: "This time slot is closed" });
       }
 
-      // conflict checks
       const ok = await areTablesAvailable({
         dateStr: date,
         slotId: slot.id,
@@ -127,7 +117,6 @@ const reservationController = {
     }
   },
 
-  /* GET /api/reservations/mine */
   async listMyReservations(req, res) {
     try {
       const rows = await listReservationsByUserForListPage(req.user.id);
@@ -138,7 +127,6 @@ const reservationController = {
     }
   },
 
-  /* POST /api/reservations/:id/request-cancel */
   async requestCancel(req, res) {
     try {
       const id = Number(req.params.id);
@@ -151,7 +139,6 @@ const reservationController = {
     }
   },
 
-  /* GET /api/reservations/:id */
   async getReservationHandler(req, res) {
     try {
       const id = Number(req.params.id);
@@ -164,7 +151,6 @@ const reservationController = {
     }
   },
 
-  /* PATCH /api/reservations/:id */
   async updateReservationHandler(req, res) {
     try {
       const id = Number(req.params.id);
@@ -220,12 +206,12 @@ const reservationController = {
     }
   },
 
-  /* DELETE /api/reservations/:id (cancel) */
   async cancelReservationHandler(req, res) {
     try {
       const id = Number(req.params.id);
-      await cancelReservation(id, req.user.id);
-      res.json({ ok: true });
+      // Changed to enforce 24h rule here too
+      const result = await cancelIfEligible24h({ id, userId: req.user.id });
+      res.json({ ok: true, ...result });
     } catch (e) {
       console.error(e);
       const code = e.statusCode || 500;
@@ -233,7 +219,6 @@ const reservationController = {
     }
   },
 
-  /* POST /api/reservations/:id/cancel-now (24h rule) */
   async cancelNow(req, res) {
     try {
       const id = Number(req.params.id);
@@ -246,7 +231,6 @@ const reservationController = {
     }
   },
 
-  /* GET /api/reservations/occupied?date=YYYY-MM-DD&slot_id=12 OR &time_label=... */
   async occupiedTables(req, res) {
     try {
       const { date, slot_id, time_label } = req.query || {};

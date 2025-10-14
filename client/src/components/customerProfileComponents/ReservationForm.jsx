@@ -22,6 +22,7 @@ export default function ReservationForm() {
   const [guests] = useState(Number(state?.guests || 0));
   const [tables] = useState(state?.tables || []);
   const [specialRequest, setSpecialRequest] = useState("");
+  const [detailsConfirmed, setDetailsConfirmed] = useState(false);
 
   const [personalInfo, setPersonalInfo] = useState({
     firstName: "",
@@ -167,6 +168,7 @@ useEffect(() => {
               value={specialRequest}
               onChange={(e) => {
                 const val = e.target.value;
+                
                 // allow empty OR must contain at least 1 letter; numbers allowed not as full string
                 if (val === "" || /[a-zA-Z]/.test(val)) setSpecialRequest(val);
               }}
@@ -183,7 +185,10 @@ useEffect(() => {
 
           <button
             type="button"
-            onClick={() => setConfirmationMsg("Details confirmed. Review the summary on the right before submitting.")}
+            onClick={() => {
+            setDetailsConfirmed(true); 
+            setConfirmationMsg("Details confirmed. Review the summary on the right before submitting.");}}
+
             className="px-6 py-3 rounded-lg bg-gray-900 text-white hover:bg-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600"
           >
             Confirm Details
@@ -209,13 +214,16 @@ useEffect(() => {
           {error && <p className="text-sm text-red-500">{error}</p>}
 
           <button
-            disabled={loading || submitting}
+            disabled={loading || submitting || !detailsConfirmed}   // added !detailsConfirmed
             onClick={handleSubmit}
-            className={`w-full px-6 py-3 rounded-lg text-white ${loading || submitting ? "bg-gray-400 cursor-not-allowed" : "bg-emerald-500 hover:bg-emerald-600"
-              }`}
+            className={`w-full px-6 py-3 rounded-lg text-white ${
+               loading || submitting || !detailsConfirmed
+               ? "bg-gray-400 cursor-not-allowed"
+                : "bg-emerald-500 hover:bg-emerald-600"
+                 }`}
           >
-            {submitting ? "Processing…" : "Reserve Table"}
-          </button>
+  {submitting ? "Processing…" : "Reserve Table"}
+</button>
         </aside>
       </div>
     </div>
