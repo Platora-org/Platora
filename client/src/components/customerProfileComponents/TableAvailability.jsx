@@ -22,7 +22,7 @@ const saveLayout = (tables) => { try { localStorage.setItem(LS_LAYOUT_KEY, JSON.
 const TableNode = ({ table, occupied, selected, selectable, onSelect }) => {
   const base = "rounded-md text-sm font-medium shadow-sm select-none flex flex-col items-center justify-center";
   const colors = occupied
-    ? "bg-rose-600 text-white cursor-not-allowed"
+    ? "bg-rose-900 text-white cursor-not-allowed"
     : selected
     ? "bg-emerald-500 text-white"
     : selectable
@@ -66,6 +66,7 @@ export default function TableAvailability() {
     (async () => {
       setLoading(true);
       try {
+        console.log("Fetching tables layout from server...");
         const res = await axiosInstance.get("/api/food-court/tables");
         if (!mounted) return;
         const normalized = (res.data?.tables || []).map((t) => ({

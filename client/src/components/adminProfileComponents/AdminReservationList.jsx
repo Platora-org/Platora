@@ -254,9 +254,8 @@ export default function AdminReservationList() {
                     <td className="px-4 py-3 font-mono">{r.id}</td>
                     <td className="px-4 py-3">
                       <div className="font-medium">{r.customer_name || "—"}</div>
-                      <div className="opacity-70">{r.customer_email || ""}</div>
-                    </td>
-                    <td className="px-4 py-3">{r.reserved_date}</td>
+                      <div className="opacity-70">{r.customer_email || ""}</div></td>
+                      <td className="px-4 py-3">{new Date(r.reserved_date).toISOString().slice(0, 10)}</td>
                     <td className="px-4 py-3">{r.slot_label || "—"}</td>
                     <td className="px-4 py-3">{r.guests}</td>
                     <td className="px-4 py-3">{tables || "—"}</td>
