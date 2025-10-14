@@ -33,11 +33,6 @@ const AdminPayoutDashboard = () => {
   const [payoutForm, setPayoutForm] = useState({
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
-    bankDetails: {
-      accountNumber: '',
-      bankName: ''
-    },
-    proofUrl: '',
     notes: ''
   });
 
@@ -84,46 +79,49 @@ const AdminPayoutDashboard = () => {
   };
 
   const processPayout = async () => {
-    if (!selectedRestaurant) return;
+  if (!selectedRestaurant) return;
+  
+  setProcessing(true);
+  try {
+    const response = await apiRequest('/admin/process-payout', {
+      method: 'POST',
+      body: JSON.stringify({
+        restaurantId: selectedRestaurant.restaurant_id,
+        month: payoutForm.month,
+        year: payoutForm.year,
+        paymentMethod: 'manual', // Change this to 'manual' if you want manual processing
+        notes: payoutForm.notes || 'Automatic Stripe payout'
+      })
+    });
     
-    setProcessing(true);
-    try {
-      await apiRequest('/admin/process-payout', {
-        method: 'POST',
-        body: JSON.stringify({
-          restaurantId: selectedRestaurant.restaurant_id,
-          month: payoutForm.month,
-          year: payoutForm.year,
-          bankDetails: payoutForm.bankDetails,
-          proofUrl: payoutForm.proofUrl,
-          notes: payoutForm.notes
-        })
-      });
-      
-      // Reload data
-      await Promise.all([loadPendingPayouts(), loadPayoutHistory()]);
-      setShowPayoutModal(false);
-      setSelectedRestaurant(null);
-      resetForm();
-      
+    // Reload data
+    await Promise.all([loadPendingPayouts(), loadPayoutHistory()]);
+    setShowPayoutModal(false);
+    setSelectedRestaurant(null);
+    resetForm();
+    
+    // Show success message with payout details
+    if (response.payout.stripePayoutId) {
+      setSuccessMessage(
+        `Stripe payout processed! Rs. ${response.payout.amountLKR.toLocaleString()} (USD $${response.payout.amountUSD.toFixed(2)}) sent to ${response.payout.restaurantName}`
+      );
+    } else {
       setSuccessMessage('Payout processed successfully!');
-    } catch (error) {
-      console.error('Error processing payout:', error);
-      setError('Failed to process payout');
-    } finally {
-      setProcessing(false);
     }
-  };
-
+  } catch (error) {
+    console.error('Error processing payout:', error);
+    setError('Failed to process payout: ' + (error.message || 'Unknown error'));
+  } finally {
+    setProcessing(false);
+  }
+};
   const resetForm = () => {
     setPayoutForm({
       month: new Date().getMonth() + 1,
       year: new Date().getFullYear(),
-      bankDetails: { accountNumber: '', bankName: '' },
-      proofUrl: '',
       notes: ''
     });
-  };
+  };;
 
   const openPayoutModal = (restaurant) => {
     setSelectedRestaurant(restaurant);
@@ -438,7 +436,7 @@ const AdminPayoutDashboard = () => {
                 <div className="flex items-center">
                   <DollarSign className="w-6 h-6 text-emerald-500 mr-2" />
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Process Payout
+                    Process Payout via Stripe
                   </h3>
                 </div>
                 <button
@@ -460,6 +458,20 @@ const AdminPayoutDashboard = () => {
                   <p className="text-sm text-emerald-700 dark:text-emerald-300 mt-2">
                     <strong>Amount:</strong> Rs. {parseFloat(selectedRestaurant.amount_lkr).toLocaleString()} 
                     ({selectedRestaurant.total_earnings} coins)
+                  </p>
+                  {selectedRestaurant.bank_account_number && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      <strong>Bank:</strong> {selectedRestaurant.bank_name} - {selectedRestaurant.bank_account_number}
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-lg p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/50">
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    <strong>Payment Method:</strong> Stripe (USD)
+                  </p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                    Amount will be converted from LKR to USD and sent via Stripe. Bank details fetched from approved KYC.
                   </p>
                 </div>
 
@@ -497,51 +509,6 @@ const AdminPayoutDashboard = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Bank Account Number
-                  </label>
-                  <input
-                    type="text"
-                    value={payoutForm.bankDetails.accountNumber}
-                    onChange={(e) => setPayoutForm({
-                      ...payoutForm, 
-                      bankDetails: {...payoutForm.bankDetails, accountNumber: e.target.value}
-                    })}
-                    className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white border-gray-300"
-                    placeholder="Enter bank account number"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Bank Name
-                  </label>
-                  <input
-                    type="text"
-                    value={payoutForm.bankDetails.bankName}
-                    onChange={(e) => setPayoutForm({
-                      ...payoutForm, 
-                      bankDetails: {...payoutForm.bankDetails, bankName: e.target.value}
-                    })}
-                    className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white border-gray-300"
-                    placeholder="Enter bank name"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Payment Proof URL (Optional)
-                  </label>
-                  <input
-                    type="url"
-                    value={payoutForm.proofUrl}
-                    onChange={(e) => setPayoutForm({...payoutForm, proofUrl: e.target.value})}
-                    className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white border-gray-300"
-                    placeholder="Upload receipt/proof URL"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Notes (Optional)
                   </label>
                   <textarea
@@ -563,12 +530,12 @@ const AdminPayoutDashboard = () => {
                   {processing ? (
                     <>
                       <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      Processing...
+                      Processing Stripe Payout...
                     </>
                   ) : (
                     <>
                       <CheckCircle className="w-4 h-4 mr-2" />
-                      Process Payout
+                      Process Stripe Payout
                     </>
                   )}
                 </button>

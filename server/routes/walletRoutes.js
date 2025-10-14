@@ -51,7 +51,9 @@ import {
   getAdminPendingPayouts,
   processRestaurantPayout,
   getPayoutHistory,
-  getPlatformRevenueAnalytics
+  getPlatformRevenueAnalytics,
+  checkStripePayoutStatus,
+  getPayoutExchangeRates
 } from '../controllers/adminPayoutController.js';
 import {
   getDashboardAnalytics,
@@ -452,6 +454,8 @@ router.get('/admin/pending-payouts', verifyJWT, checkRole("admin"), getAdminPend
 router.post('/admin/process-payout', verifyJWT, checkRole("admin"), processRestaurantPayout);
 router.get('/admin/payout-history', verifyJWT, checkRole("admin"), getPayoutHistory);
 router.get('/admin/platform-revenue', verifyJWT, checkRole("admin"), getPlatformRevenueAnalytics);
+router.get('/admin/payout-exchange-rates', verifyJWT, checkRole("admin"), getPayoutExchangeRates);
+router.get('/admin/stripe-payout-status/:stripePayoutId', verifyJWT, checkRole("admin"), checkStripePayoutStatus);
 
 // Analytics routes
 router.get('/analytics/dashboard', verifyJWT, getDashboardAnalytics);
