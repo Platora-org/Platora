@@ -1,6 +1,7 @@
 import pool from "../config/db.js";
 
 export const getRestaurantOrdersByRestaurant = async (restaurantId) => {
+  
   const q = `
     SELECT
       ro.id AS restaurant_order_id,
@@ -8,12 +9,15 @@ export const getRestaurantOrdersByRestaurant = async (restaurantId) => {
       ro.status AS restaurant_status,
       ro.subtotal,
       ro.created_at AS restaurant_created_at,
+      o.type AS type,            -- <-- added
+      o.status AS parent_order_status, -- optional: if you want it
       oi.id AS order_item_id,
       oi.menu_item_id,
       oi.quantity,
       oi.price AS item_price,
       mi.name AS item_name
     FROM restaurant_orders ro
+    JOIN orders o ON o.id = ro.order_id           
     JOIN order_items oi ON oi.restaurant_order_id = ro.id
     LEFT JOIN menu_items mi ON mi.id = oi.menu_item_id
     WHERE ro.restaurant_id = $1
@@ -31,6 +35,7 @@ export const getRestaurantOrdersByRestaurant = async (restaurantId) => {
         status: row.restaurant_status,
         subtotal: Number(row.subtotal),
         created_at: row.restaurant_created_at,
+        type: row.type || 'pickup', // <-- include type here
         items: [],
       });
     }
@@ -45,6 +50,7 @@ export const getRestaurantOrdersByRestaurant = async (restaurantId) => {
 
   return Array.from(map.values());
 };
+
 
 export async function updateRestaurantOrderStatus(restaurantOrderId, newStatus, client = pool) {
   const q = `

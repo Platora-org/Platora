@@ -1091,9 +1091,10 @@ CREATE TABLE recipes (
 CREATE TABLE orders (
   id SERIAL PRIMARY KEY,
   customer_id INTEGER REFERENCES customer_profiles(id) ON DELETE CASCADE,
-  status VARCHAR(20) DEFAULT 'pending', -- pending, completed, cancelled
+  type VARCHAR(20) DEFAULT 'pickup',  -- pickup or delivery
+  status VARCHAR(20) DEFAULT 'pending',  -- pending, completed, cancelled
   total_amount NUMERIC(10,2) NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE restaurant_orders (
@@ -1143,6 +1144,13 @@ CREATE TABLE cart_items (
   CONSTRAINT cart_item_unique UNIQUE (cart_id, menu_item_id) -- ✅ correct uniqueness
 );
 
+--order_delivery_details table
+CREATE TABLE order_delivery_details (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER UNIQUE REFERENCES orders(id) ON DELETE CASCADE,
+  delivery_address TEXT NOT NULL,
+  contact_number VARCHAR(15) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 CREATE TABLE password_reset_tokens (
   id SERIAL PRIMARY KEY,
   user_id INT REFERENCES users(id) ON DELETE CASCADE,

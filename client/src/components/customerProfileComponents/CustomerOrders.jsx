@@ -29,69 +29,24 @@ export default function CustomerOrders() {
     [orders]
   );
 
-  // Cancel order handler
-  const handleCancel = async (orderId, restaurantOrderId) => {
-  try {
-    const res = await axiosInstance.post(`/api/orders/restaurant-order/${restaurantOrderId}/cancel`);
-    if (res.data?.success) {
-      setOrders(prev =>
-        prev.map(o => {
-          if (o.orderId !== orderId) return o;
-          return {
-            ...o,
-            restaurants: o.restaurants.map(r => {
-              const rid = r.restaurantOrderId;
-              if (String(rid) === String(restaurantOrderId)) {
-                return { ...r, status: "cancelled" };
-              }
-              return r;
-            })
-          };
-        })
-      );
-    } else {
-      alert(res.data?.message || "Failed to cancel");
-    }
-  } catch (err) {
-    console.error("Cancel order failed", err);
-    alert(err.response?.data?.message || "Failed to cancel order");
-  }
-};
-
-
   // Status badge styling
   const statusBadge = (status) => {
     const base = "rounded-full px-2 py-0.5 text-xs font-semibold capitalize ";
     switch (status) {
       case "cancelled":
       case "denied":
-        return (
-          base + "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-100"
-        );
+        return base + "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-100";
       case "partially_denied":
-        return (
-          base +
-          "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-100"
-        );
+        return base + "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-100";
       case "accepted":
       case "preparing":
-        return (
-          base + "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100"
-        );
+        return base + "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100";
       case "delivered":
       case "completed":
-        return (
-          base +
-          "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-100"
-        );
+        return base + "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-100";
       case "pending":
-        return (
-          base + "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200"
-        );
       default:
-        return (
-          base + "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200"
-        );
+        return base + "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200";
     }
   };
 
@@ -122,11 +77,11 @@ export default function CustomerOrders() {
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                       {rest.restaurantName}
                     </h2>
-                    
                     <span className={statusBadge(rest.status)}>
                       {rest.status}
                     </span>
                   </div>
+
                   <table className="min-w-full text-sm">
                     <thead className="bg-gray-50 text-gray-700 dark:bg-gray-800 dark:text-gray-200">
                       <tr>
@@ -139,7 +94,6 @@ export default function CustomerOrders() {
                         <th className="px-4 py-2 text-left font-semibold">
                           Price
                         </th>
-                        
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -157,17 +111,7 @@ export default function CustomerOrders() {
                         </tr>
                       ))}
                     </tbody>
-                  </table><br></br>
-                  {/* Cancel button only when status is pending */}
-                            {rest.status === "pending" && (
-
-                              <button
-                                onClick={() => handleCancel(order.orderId, rest.restaurantOrderId )}
-                                className="rounded-lg bg-red-500 px-3 py-1 text-xs font-semibold text-white hover:bg-red-600"
-                              >
-                                Cancel
-                              </button>
-                            )}
+                  </table>
                 </div>
               ))}
             </div>
@@ -177,7 +121,6 @@ export default function CustomerOrders() {
               <span className="text-gray-600 dark:text-gray-400">
                 Placed on: {order.createdAt}
               </span>
-              
             </div>
           </div>
         ))}

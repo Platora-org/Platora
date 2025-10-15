@@ -1,8 +1,9 @@
 import { motion } from "framer-motion";
-import { ShoppingCart, UtensilsCrossed } from "lucide-react";
+import { ShoppingCart, UtensilsCrossed ,ArrowLeft} from "lucide-react";
 import { useParams } from "react-router-dom";
 import { useState, useEffect, useMemo } from "react";
 import axiosInstance from "../utils/axiosInstance";
+import { useNavigate } from "react-router-dom";
 
 function MenuPage() {
     const { id } = useParams(); // restaurant ID from URL
@@ -35,8 +36,8 @@ function MenuPage() {
     }, [id]);
 
     const lkrToCoins = (lkr) => {
-      const exchangeRate = 50;
-      return lkr / exchangeRate;
+        const exchangeRate = 50;
+        return lkr / exchangeRate;
     };
 
     const addToCart = async (menuItemId) => {
@@ -48,7 +49,7 @@ function MenuPage() {
         }
     };
 
-    // ⭐ Filter + Sort combined
+    //  Filter + Sort combined
     const filteredAndSortedItems = useMemo(() => {
         let items = menuItems.filter((item) =>
             item.name.toLowerCase().includes(filter.toLowerCase())
@@ -78,6 +79,12 @@ function MenuPage() {
         return items;
     }, [menuItems, filter, sortBy]);
 
+    const navigate = useNavigate();
+    const handleBack = () => {
+        navigate(-1);
+    };
+
+
     if (loading) return <p className="text-center py-10 dark:text-gray-300">Loading menu...</p>;
     if (error) return <p className="text-center py-10 text-red-500">{error}</p>;
 
@@ -87,6 +94,13 @@ function MenuPage() {
             className="bg-emerald-50/50 dark:bg-gray-900 min-h-screen transition-colors duration-300 py-16"
         >
             <div className="container mx-auto px-6">
+                {/* Back Button */}
+                <button
+                    onClick={handleBack}
+                    className="flex items-center text-emerald-600 dark:text-emerald-400 font-semibold mb-6 text-xl"
+                >
+                    <ArrowLeft className="mr-2" size={30} /> Back
+                </button>
                 <motion.h2
                     className="text-3xl md:text-5xl font-extrabold text-gray-800 dark:text-white text-center mb-12"
                     initial={{ opacity: 0, y: -30 }}
