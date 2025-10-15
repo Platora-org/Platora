@@ -1053,6 +1053,9 @@ CREATE TABLE reservations (
   updated_at       TIMESTAMPTZ DEFAULT now()
 );
 
+ALTER TABLE reservations ADD COLUMN stored_tables JSONB;
+
+
 
 -- === BOOKED TABLES ===
 CREATE TABLE IF NOT EXISTS reservation_tables (

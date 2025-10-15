@@ -87,7 +87,7 @@ app.use("/api/food-court", foodCourtRoutes);
 
 app.use("/api/reservations/availability", availabilityRoutes);  // public
 app.use("/api/admin/availability", adminAvailabilityRoutes);    // admin
-
+app.use("/api/admin", adminReservationsRoutes);
 
 
 app.use('/api/wallet', (req, res, next) => {

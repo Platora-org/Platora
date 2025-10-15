@@ -136,7 +136,7 @@ const ReservationPage = () => {
       <div className="max-w-7xl mx-auto px-6 md:px-6 py-10">
         <h1 className="text-3xl font-bold mb-2">Make a Reservation</h1>
         <p className="text-gray-600 dark:text-gray-400 mb-8">
-          Select your preferred date, time, and party size
+          Select your preferred date, time, and guest count
         </p>
 
         {/* Optional notice */}

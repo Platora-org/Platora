@@ -58,47 +58,58 @@ useEffect(() => {
     setReservationFee(coins);
   }, [tables]);
 
-  const handleSubmit = async () => {
-    setSubmitting(true);
-    setError("");
+const handleSubmit = async () => {
+  setSubmitting(true);
+  setError("");
+  setConfirmationMsg("");
 
-    try {
-      const walletReturn = await axiosInstance.post('/api/wallet/spend', {
-      coins: reservationFee,
-      reservationId: reservationId,  // Use reservationId instead of orderId
-      description: `  Reservation ${reservationId}`,
+  try {
+    // 1️⃣ Check wallet
+    const walletCheckRes = await axiosInstance.post("/api/wallet/checkSufficient", {
+      coins: lkrToCoins(reservationFee),
+    });
+    console.log("Wallet check:", walletCheckRes.data);
+
+    // 2️⃣ Create reservation
+    const reservationRes = await axiosInstance.post("/api/reservations", {
+      date,
+      slot_id: slotId || undefined,
+      time_label: !slotId ? time : undefined,
+      guests,
+      table_ids: tables.map((t) => t.id),
+      special_request: specialRequest || null,
     });
 
-    } catch (err) {
-      console.error("Wallet error:", err?.response?.data || err.message);
-      setError(err?.response?.data?.message || "Something went wrong while reserving. Please try again.");
-      return;
-    }
-    
+    // ✅ Use a local variable
+    const newReservationId = reservationRes.data.id;
+    setReservationId(newReservationId);
 
-    try {
-      const reservation_Id =  await axiosInstance.post("/api/reservations", {
-        date,
-        // Preferred exact ID; backend also accepts time_label as fallback.
-        slot_id: slotId || undefined,
-        time_label: !slotId ? time : undefined,
-        guests,
-        table_ids: tables.map((t) => t.id),
-        special_request: specialRequest || null,
-      });
+    console.log("Reservation successful, ID:", newReservationId);
 
-      const reservationId = reservation_Id.data.id;
+    // 3️⃣ Deduct wallet
+    const walletReturn = await axiosInstance.post("/api/wallet/spend", {
+      coins: reservationFee,
+      reservationId: newReservationId, // ✅ use local variable, not state
+      description: `Reservation ${newReservationId}`,
+    });
 
-      console.log("Reservation successful, ID:", reservationId);
+    console.log("Wallet spend successful:", walletReturn.data);
 
-      setConfirmationMsg(`Reservation Successful! Your reservation ID is ${reservationId}.`);
-      setTimeout(() => navigate("/customerprofile/reservations"), 1500);
-    } catch (e) {
-      console.error("Reservation error:", e?.response?.data || e.message);
-      setError(e?.response?.data?.message || "Something went wrong while reserving. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
+    // 4️⃣ Success message
+    setConfirmationMsg(`Reservation Successful! Your reservation ID is ${newReservationId}.`);
+    setTimeout(() => navigate("/customerprofile/reservations"), 1500);
+
+  } catch (err) {
+    console.error("Reservation error:", err?.response?.data || err.message);
+    setError(err?.response?.data?.message || "Something went wrong while reserving. Please try again.");
+  } finally {
+    setSubmitting(false);
+  }
+}
+
+  const lkrToCoins = (lkr) => {
+    const exchangeRate = 50;
+    return lkr / exchangeRate;
   };
 
   return (
