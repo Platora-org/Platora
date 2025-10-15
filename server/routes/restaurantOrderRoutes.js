@@ -6,11 +6,12 @@ import checkRole from '../middleware/requireRole.js';
 
 const router = express.Router();
 
-router.get("/user-report",verifyJWT, checkRole('restaurant'), restaurantReport.exportRestaurantOrders);
-router.get('/:restaurantOrderId', verifyJWT, checkRole('restaurant'), restaurantOrderController.getOrders);
+// ✅ SPECIFIC ROUTES FIRST
+router.get("/user-report", verifyJWT, checkRole('restaurant'), restaurantReport.exportRestaurantOrders);
 router.patch('/:restaurantOrderId/status', verifyJWT, checkRole('restaurant'), restaurantOrderController.updateOrderStatusController);
 router.patch('/:restaurantOrderId/advance', verifyJWT, checkRole('restaurant'), restaurantOrderController.advanceStatus);
 
-
+// ✅ GENERIC ROUTES LAST
+router.get('/:restaurantOrderId', verifyJWT, checkRole('restaurant'), restaurantOrderController.getOrders);
 
 export default router;

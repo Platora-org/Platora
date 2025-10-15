@@ -6,9 +6,9 @@ export default function RestaurantOrders({ restaurantId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refunding, setRefunding] = useState(null); 
-  const [rejectModal, setRejectModal] = useState(null); // Track order to reject
-  const [rejectReason, setRejectReason] = useState(""); // User input for rejection reason
-  const [notification, setNotification] = useState(null); // Success/error messages
+  const [rejectModal, setRejectModal] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [notification, setNotification] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -26,7 +26,14 @@ export default function RestaurantOrders({ restaurantId }) {
       }
     };
     fetchOrders();
-    return () => { mounted = false; };
+    
+    // Poll for updates every 30 seconds
+    const interval = setInterval(fetchOrders, 30000);
+    
+    return () => { 
+      mounted = false;
+      clearInterval(interval);
+    };
   }, [restaurantId]);
 
   const calculateTotal = (items) => items.reduce((sum, it) => sum + it.quantity * it.price, 0);
@@ -130,7 +137,21 @@ export default function RestaurantOrders({ restaurantId }) {
       }
 
       const res = await axiosInstance.patch(`/api/restaurant-orders/${id}/status`, { status: nextStatus });
-      updateLocalOrder(id, { status: res.data.status });
+      
+      // Update local state with new status and delivery info
+      const updates = { status: res.data.status };
+      if (res.data.delivery) {
+        updates.delivery = res.data.delivery;
+      }
+      updateLocalOrder(id, updates);
+      
+      // 🚚 Show delivery info notification if assigned
+      if (res.data.delivery) {
+        setNotification({
+          type: "success",
+          message: `Order marked as ready! Delivery agent ${res.data.delivery.agentName} (${res.data.delivery.agentPhone}) has been assigned.`
+        });
+      }
     } catch (err) {
       console.error(err);
       setNotification({ type: "error", message: err.response?.data?.error || "Failed to advance status" });
@@ -184,9 +205,17 @@ export default function RestaurantOrders({ restaurantId }) {
           return (
             <div key={order.id} className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
               <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-6 py-3 dark:border-gray-700 dark:bg-gray-800">
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Order ID: #{order.id}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Order ID: #{order.id}</span>
+                  {order.type === 'delivery' && (
+                    <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100 rounded-full px-2 py-0.5">
+                      🚚 Delivery
+                    </span>
+                  )}
+                </div>
                 <span className={statusBadge(order.status)}>{order.status}</span>
               </div>
+              
               <div className="p-6">
                 <table className="min-w-full text-sm">
                   <thead className="bg-gray-50 text-gray-700 dark:bg-gray-800 dark:text-gray-200">
@@ -210,6 +239,39 @@ export default function RestaurantOrders({ restaurantId }) {
                   Subtotal: Rs. {order.subtotal ?? calculateTotal(order.items)}
                 </div>
               </div>
+
+              {/* 🚚 DELIVERY INFO SECTION - Shows when delivery is assigned */}
+              {order.delivery && (
+                <div className="mx-6 mb-6 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 dark:from-emerald-600 dark:to-teal-700 p-4 shadow-lg">
+                  <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/20">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🚚</span>
+                      <span className="text-white font-semibold">Delivery Agent Assigned</span>
+                    </div>
+                    {order.delivery.deliveryStatus && (
+                      <span className="bg-white/20 text-white text-xs px-3 py-1 rounded-full font-medium capitalize">
+                        {order.delivery.deliveryStatus}
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center bg-white/10 rounded-lg px-3 py-2 backdrop-blur-sm">
+                      <span className="text-white/90 text-sm">👤 Agent Name:</span>
+                      <span className="text-white font-semibold">{order.delivery.agentName}</span>
+                    </div>
+                    <div className="flex justify-between items-center bg-white/10 rounded-lg px-3 py-2 backdrop-blur-sm">
+                      <span className="text-white/90 text-sm">📞 Phone:</span>
+                      <a 
+                        href={`tel:${order.delivery.agentPhone}`}
+                        className="text-white font-semibold hover:underline"
+                      >
+                        {order.delivery.agentPhone}
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-between items-center border-t border-gray-200 bg-gray-50 px-6 py-3 dark:border-gray-700 dark:bg-gray-800">
                 <div>
                   {refunding === order.id ? (
