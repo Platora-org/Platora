@@ -1144,13 +1144,7 @@ CREATE TABLE cart_items (
   CONSTRAINT cart_item_unique UNIQUE (cart_id, menu_item_id) -- ✅ correct uniqueness
 );
 
---order_delivery_details table
-CREATE TABLE order_delivery_details (
-  id SERIAL PRIMARY KEY,
-  order_id INTEGER UNIQUE REFERENCES orders(id) ON DELETE CASCADE,
-  delivery_address TEXT NOT NULL,
-  contact_number VARCHAR(15) NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+
 CREATE TABLE password_reset_tokens (
   id SERIAL PRIMARY KEY,
   user_id INT REFERENCES users(id) ON DELETE CASCADE,
@@ -1159,3 +1153,263 @@ CREATE TABLE password_reset_tokens (
   used BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Create refunds table with INTEGER IDs
+CREATE TABLE IF NOT EXISTS refunds (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  transaction_id INTEGER NOT NULL REFERENCES transactions(id),
+  order_id INTEGER REFERENCES orders(id) ON DELETE CASCADE,
+  reservation_id INTEGER REFERENCES reservations(id) ON DELETE CASCADE,
+  restaurant_id INTEGER REFERENCES restaurant_profiles(id) ON DELETE SET NULL,
+  refund_amount_coins DECIMAL(15, 2) NOT NULL CHECK (refund_amount_coins > 0),
+  refund_reason TEXT NOT NULL,
+  refund_type VARCHAR(50) NOT NULL CHECK (refund_type IN ('ORDER_CANCEL', 'ORDER_REJECT', 'RESERVATION_CANCEL')),
+  status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'COMPLETED', 'FAILED', 'CANCELLED')),
+  metadata JSONB DEFAULT '{}',
+  processed_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  
+  -- Ensure either order_id or reservation_id is present
+  CONSTRAINT check_reference CHECK (
+    (order_id IS NOT NULL AND reservation_id IS NULL) OR
+    (order_id IS NULL AND reservation_id IS NOT NULL)
+  )
+);
+
+-- Create indexes for better query performance
+CREATE INDEX idx_refunds_user_id ON refunds(user_id);
+CREATE INDEX idx_refunds_transaction_id ON refunds(transaction_id);
+CREATE INDEX idx_refunds_order_id ON refunds(order_id) WHERE order_id IS NOT NULL;
+CREATE INDEX idx_refunds_reservation_id ON refunds(reservation_id) WHERE reservation_id IS NOT NULL;
+CREATE INDEX idx_refunds_restaurant_id ON refunds(restaurant_id) WHERE restaurant_id IS NOT NULL;
+CREATE INDEX idx_refunds_status ON refunds(status);
+CREATE INDEX idx_refunds_created_at ON refunds(created_at DESC);
+CREATE INDEX idx_refunds_refund_type ON refunds(refund_type);
+
+-- Create trigger to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_refunds_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = CURRENT_TIMESTAMP;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_update_refunds_updated_at
+  BEFORE UPDATE ON refunds
+  FOR EACH ROW
+  EXECUTE FUNCTION update_refunds_updated_at();
+
+-- Add comment to table
+COMMENT ON TABLE refunds IS 'Stores refund records for cancelled orders and reservations';
+COMMENT ON COLUMN refunds.refund_type IS 'ORDER_CANCEL: Customer cancelled order before preparing, ORDER_REJECT: Restaurant rejected order, RESERVATION_CANCEL: Customer cancelled reservation >24hrs before';
+COMMENT ON COLUMN refunds.status IS 'PENDING: Refund initiated, COMPLETED: Coins refunded, FAILED: Refund failed, CANCELLED: Refund cancelled';
+
+-- Add refund tracking columns to restaurant_earnings only
+ALTER TABLE restaurant_earnings
+ADD COLUMN IF NOT EXISTS refund_id INTEGER,
+ADD COLUMN IF NOT EXISTS is_reversed BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS original_earning_id INTEGER;
+
+-- Add foreign key constraints after columns are created
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'restaurant_earnings_refund_id_fkey'
+  ) THEN
+    ALTER TABLE restaurant_earnings 
+    ADD CONSTRAINT restaurant_earnings_refund_id_fkey 
+    FOREIGN KEY (refund_id) REFERENCES refunds(id) ON DELETE SET NULL;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'restaurant_earnings_original_earning_id_fkey'
+  ) THEN
+    ALTER TABLE restaurant_earnings 
+    ADD CONSTRAINT restaurant_earnings_original_earning_id_fkey 
+    FOREIGN KEY (original_earning_id) REFERENCES restaurant_earnings(id) ON DELETE SET NULL;
+  END IF;
+END $$;
+
+-- Add indexes for restaurant_earnings refund tracking
+CREATE INDEX IF NOT EXISTS idx_restaurant_earnings_refund_id 
+  ON restaurant_earnings(refund_id) WHERE refund_id IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_restaurant_earnings_is_reversed 
+  ON restaurant_earnings(is_reversed) WHERE is_reversed = true;
+
+-- Add comments for restaurant_earnings
+COMMENT ON COLUMN restaurant_earnings.refund_id IS 'Links to refund if this is a reversal entry';
+COMMENT ON COLUMN restaurant_earnings.is_reversed IS 'True if this is a reversal/refund entry (negative values)';
+COMMENT ON COLUMN restaurant_earnings.original_earning_id IS 'References the original earning record that is being reversed';
+
+-- Check current constraint
+SELECT 
+    tc.constraint_name, 
+    tc.table_name, 
+    kcu.column_name, 
+    ccu.table_name AS foreign_table_name,
+    ccu.column_name AS foreign_column_name 
+FROM information_schema.table_constraints AS tc 
+JOIN information_schema.key_column_usage AS kcu
+  ON tc.constraint_name = kcu.constraint_name
+JOIN information_schema.constraint_column_usage AS ccu
+  ON ccu.constraint_name = tc.constraint_name
+WHERE tc.table_name='refunds' AND kcu.column_name='order_id';
+
+-- If it's pointing to wrong table, drop and recreate:
+ALTER TABLE refunds DROP CONSTRAINT refunds_order_id_fkey;
+
+-- Add correct constraint pointing to restaurant_orders
+ALTER TABLE refunds 
+ADD CONSTRAINT refunds_order_id_fkey 
+FOREIGN KEY (order_id) 
+REFERENCES restaurant_orders(id);
+
+-- Create new function for order_items trigger
+CREATE OR REPLACE FUNCTION update_transaction_reference_for_order_items()
+RETURNS TRIGGER AS $$
+DECLARE
+  order_user_id INTEGER;
+  order_created_at TIMESTAMP;
+BEGIN
+  -- Get the user_id and creation time from the restaurant_order
+  SELECT cp.user_id, o.created_at
+  INTO order_user_id, order_created_at
+  FROM restaurant_orders ro
+  JOIN orders o ON ro.order_id = o.id
+  JOIN customer_profiles cp ON o.customer_id = cp.id
+  WHERE ro.id = NEW.restaurant_order_id;
+  
+  -- Update transaction that matches this specific menu_item
+  UPDATE transactions t
+  SET 
+    reference_id = NEW.restaurant_order_id::TEXT,
+    metadata = jsonb_set(
+      jsonb_set(
+        COALESCE(t.metadata, '{}'::jsonb),
+        '{restaurant_order_id}',
+        to_jsonb(NEW.restaurant_order_id)
+      ),
+      '{original_menu_item_id}',
+      to_jsonb(t.reference_id::INTEGER)
+    ),
+    updated_at = NOW()
+  WHERE t.reference_id = NEW.menu_item_id::TEXT
+    AND t.user_id = order_user_id
+    AND t.transaction_type = 'SPEND'
+    AND t.status = 'COMPLETED'
+    AND t.created_at >= (order_created_at - INTERVAL '3 minutes')
+    AND t.created_at <= (order_created_at + INTERVAL '3 minutes')
+    AND t.metadata->>'restaurant_order_id' IS NULL;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create new trigger on order_items table
+CREATE TRIGGER trigger_update_transaction_reference_items
+  AFTER INSERT ON order_items
+  FOR EACH ROW
+  EXECUTE FUNCTION update_transaction_reference_for_order_items();
+
+-- Verify new trigger created
+SELECT tgname, tgrelid::regclass as table_name, tgenabled
+FROM pg_trigger 
+WHERE tgname = 'trigger_update_transaction_reference_items';
+
+-- ============================================
+-- STEP 3: FIX EXISTING DATA (One-time update)
+-- ============================================
+
+-- Update all existing transactions
+UPDATE transactions t
+SET 
+  reference_id = oi.restaurant_order_id::TEXT,
+  metadata = jsonb_set(
+    jsonb_set(
+      COALESCE(t.metadata, '{}'::jsonb),
+      '{restaurant_order_id}',
+      to_jsonb(oi.restaurant_order_id)
+    ),
+    '{original_menu_item_id}',
+    to_jsonb(t.reference_id::INTEGER)
+  ),
+  updated_at = NOW()
+FROM order_items oi
+JOIN restaurant_orders ro ON oi.restaurant_order_id = ro.id
+JOIN orders o ON ro.order_id = o.id
+JOIN customer_profiles cp ON o.customer_id = cp.id
+WHERE t.reference_id = oi.menu_item_id::TEXT
+  AND t.user_id = cp.user_id
+  AND t.transaction_type = 'SPEND'
+  AND t.status = 'COMPLETED'
+  AND t.metadata->>'restaurant_order_id' IS NULL;
+
+-- ============================================
+-- STEP 4: VERIFY EVERYTHING WORKS
+-- ============================================
+
+-- Check how many transactions were updated
+SELECT COUNT(*) as updated_transactions
+FROM transactions
+WHERE metadata->>'restaurant_order_id' IS NOT NULL;
+
+-- View sample of updated transactions
+SELECT 
+  id,
+  reference_id as new_reference,
+  metadata->>'restaurant_order_id' as ro_id,
+  metadata->>'original_menu_item_id' as original_item,
+  description,
+  updated_at
+FROM transactions
+WHERE metadata->>'restaurant_order_id' IS NOT NULL
+ORDER BY updated_at DESC
+LIMIT 10;
+
+-- Check if any transactions still need updating
+SELECT COUNT(*) as still_needs_update
+FROM transactions t
+WHERE t.transaction_type = 'SPEND'
+  AND t.status = 'COMPLETED'
+  AND t.reference_id ~ '^[0-9]+$'
+  AND t.metadata->>'restaurant_order_id' IS NULL
+  AND EXISTS (
+    SELECT 1 FROM order_items oi 
+    WHERE oi.menu_item_id::TEXT = t.reference_id
+  );
+
+  -- Make sure orders table has type column
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS type VARCHAR(20) DEFAULT 'pickup';
+
+CREATE TABLE deliveries (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER UNIQUE REFERENCES orders(id) ON DELETE CASCADE,
+  delivery_agent_id INTEGER REFERENCES deliveryagent(id) ON DELETE SET NULL,
+  otp_code VARCHAR(6) NOT NULL,
+  status VARCHAR(20) DEFAULT 'assigned', -- 'assigned', 'picked_up', 'delivered'
+  picked_up_at TIMESTAMPTZ,
+  delivered_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create index for faster lookups
+CREATE INDEX idx_deliveries_order_id ON deliveries(order_id);
+CREATE INDEX idx_deliveries_agent_id ON deliveries(delivery_agent_id);
+CREATE INDEX idx_deliveries_status ON deliveries(status);
+
+
+CREATE TABLE order_delivery_details (
+  id SERIAL PRIMARY KEY,
+  order_id INTEGER UNIQUE REFERENCES orders(id) ON DELETE CASCADE,
+  delivery_address TEXT NOT NULL,
+  contact_number VARCHAR(15) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create index
+CREATE INDEX idx_order_delivery_details_order_id ON order_delivery_details(order_id);

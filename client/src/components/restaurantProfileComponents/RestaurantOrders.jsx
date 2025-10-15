@@ -5,7 +5,10 @@ export default function RestaurantOrders({ restaurantId }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [refunding, setRefunding] = useState(null); // Track which order is being refunded
+  const [refunding, setRefunding] = useState(null); 
+  const [rejectModal, setRejectModal] = useState(null); // Track order to reject
+  const [rejectReason, setRejectReason] = useState(""); // User input for rejection reason
+  const [notification, setNotification] = useState(null); // Success/error messages
 
   useEffect(() => {
     let mounted = true;
@@ -13,7 +16,6 @@ export default function RestaurantOrders({ restaurantId }) {
       try {
         setLoading(true);
         const res = await axiosInstance.get(`/api/restaurant-orders/${restaurantId}`);
-        console.log("API response:", res.data);
         if (!mounted) return;
         setOrders(res.data);
       } catch (err) {
@@ -27,8 +29,7 @@ export default function RestaurantOrders({ restaurantId }) {
     return () => { mounted = false; };
   }, [restaurantId]);
 
-  const calculateTotal = (items) =>
-    items.reduce((sum, it) => sum + it.quantity * it.price, 0);
+  const calculateTotal = (items) => items.reduce((sum, it) => sum + it.quantity * it.price, 0);
 
   const statusBadge = (status) => {
     const base = "rounded-full px-2 py-0.5 text-xs font-semibold capitalize ";
@@ -55,47 +56,44 @@ export default function RestaurantOrders({ restaurantId }) {
       updateLocalOrder(id, { status: res.data.status });
     } catch (err) {
       console.error(err);
-      alert("Failed to accept order");
+      setNotification({ type: "error", message: "Failed to accept order" });
     }
   };
 
-  const handleReject = async (id) => {
-    const reason = window.prompt("Please provide a reason for rejection (required for customer notification):");
-    if (!reason || reason.trim() === "") {
-      alert("Rejection reason is required");
-      return;
-    }
-
-    if (!window.confirm(`Reject this order and refund customer?\n\nReason: ${reason}\n\nCustomer will receive a full refund to their wallet.`)) {
-      return;
-    }
-
+  const handleRejectConfirm = async () => {
+    if (!rejectReason.trim()) return;
+    const id = rejectModal.id;
     try {
       setRefunding(id);
       await axiosInstance.patch(`/api/restaurant-orders/${id}/status`, { status: 'denied' });
       const refundRes = await axiosInstance.post('/api/refunds/order', {
         restaurantOrderId: id,
-        reason: reason.trim()
+        reason: rejectReason.trim()
       });
 
       if (refundRes.data.success) {
         const { total_amount, items_refunded, new_balance } = refundRes.data.refund;
-        alert(
-          `✓ Order rejected successfully!\n\n` +
-          `Refunded: ${total_amount} coins\n` +
-          `Items refunded: ${items_refunded}\n` +
-          `Customer's new balance: ${new_balance} coins`
-        );
         updateLocalOrder(id, { status: 'denied' });
+        setNotification({
+          type: "success",
+          message: `Order #${id} rejected and refunded successfully. Refunded: ${total_amount} coins, Items refunded: ${items_refunded}, Customer balance: ${new_balance}`
+        });
       } else {
-        alert("Order status updated but refund failed: " + refundRes.data.message);
+        setNotification({
+          type: "warning",
+          message: "Order status updated but refund failed: " + refundRes.data.message
+        });
       }
     } catch (err) {
       console.error(err);
-      const errorMsg = err.response?.data?.message || "Failed to reject order and process refund";
-      alert(`Error: ${errorMsg}`);
+      setNotification({
+        type: "error",
+        message: err.response?.data?.message || "Failed to reject order and process refund"
+      });
     } finally {
       setRefunding(null);
+      setRejectModal(null);
+      setRejectReason("");
     }
   };
 
@@ -127,7 +125,7 @@ export default function RestaurantOrders({ restaurantId }) {
 
       const nextStatus = getNextStatus(currentStatus, type);
       if (!nextStatus) {
-        alert("Order is already completed or cannot advance further.");
+        setNotification({ type: "info", message: "Order is already completed or cannot advance further." });
         return;
       }
 
@@ -135,7 +133,7 @@ export default function RestaurantOrders({ restaurantId }) {
       updateLocalOrder(id, { status: res.data.status });
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.error || "Failed to advance status");
+      setNotification({ type: "error", message: err.response?.data?.error || "Failed to advance status" });
     }
   };
 
@@ -156,39 +154,28 @@ export default function RestaurantOrders({ restaurantId }) {
   const formatDate = (timestamp) => {
     if (!timestamp) return "Unknown";
     const date = new Date(timestamp);
-    return date.toLocaleString("en-LK", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
+    return date.toLocaleString("en-LK", { dateStyle: "medium", timeStyle: "short" });
   };
-
-  if (loading) return <div className="p-6">Loading orders…</div>;
-  if (error) return <div className="p-6 text-red-600">Error: {error}</div>;
 
   return (
     <div className="p-6">
+      {/* Notification */}
+      {notification && (
+        <div className={`mb-4 p-4 rounded-lg text-sm font-medium ${
+          notification.type === "success" ? "bg-green-100 text-green-800" :
+          notification.type === "error" ? "bg-red-100 text-red-800" :
+          "bg-yellow-100 text-yellow-800"
+        }`}>
+          {notification.message}
+        </div>
+      )}
+
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          Restaurant Orders
-        </h1>
-
-        <button
-          onClick={() => downloadPDF()} 
-          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
-        >
-          Generate Report
-        </button>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Restaurant Orders</h1>
+        <button onClick={downloadPDF} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">Generate Report</button>
       </div>
 
-      {/* Info Banner */}
-      <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
-        <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">Order Rejection Policy</h3>
-        <p className="text-sm text-blue-800 dark:text-blue-200">
-          When you reject an order, the customer will automatically receive a <strong>full refund</strong> to their wallet. 
-          Please provide a clear reason for the rejection.
-        </p>
-      </div>
-
+      {/* Orders */}
       <div className="space-y-6">
         {orders.map(order => {
           const lowerStatus = order.status?.toLowerCase();
@@ -200,7 +187,6 @@ export default function RestaurantOrders({ restaurantId }) {
                 <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Order ID: #{order.id}</span>
                 <span className={statusBadge(order.status)}>{order.status}</span>
               </div>
-
               <div className="p-6">
                 <table className="min-w-full text-sm">
                   <thead className="bg-gray-50 text-gray-700 dark:bg-gray-800 dark:text-gray-200">
@@ -220,57 +206,38 @@ export default function RestaurantOrders({ restaurantId }) {
                     ))}
                   </tbody>
                 </table>
-
                 <div className="mt-4 text-right font-semibold text-gray-900 dark:text-gray-100">
                   Subtotal: Rs. {order.subtotal ?? calculateTotal(order.items)}
                 </div>
               </div>
-
               <div className="flex justify-between items-center border-t border-gray-200 bg-gray-50 px-6 py-3 dark:border-gray-700 dark:bg-gray-800">
                 <div>
                   {refunding === order.id ? (
-                    <span className="text-sm text-gray-600 dark:text-gray-400 italic">
-                      Processing refund...
-                    </span> 
+                    <span className="text-sm text-gray-600 dark:text-gray-400 italic">Processing refund...</span>
                   ) : (
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      Ordered on: {formatDate(order.created_at || order.createdAt)}
-                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Ordered on: {formatDate(order.created_at || order.createdAt)}</div>
                   )}
                 </div>
                 <div className="flex gap-2">
                   {lowerStatus === 'pending' && (
                     <>
-                      <button 
-                        onClick={() => handleAccept(order.id)} 
-                        className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={refunding === order.id}
-                      >
+                      <button onClick={() => handleAccept(order.id)} disabled={refunding === order.id} className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                         Accept Order
                       </button>
-                      <button 
-                        onClick={() => handleReject(order.id)} 
-                        className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={refunding === order.id}
-                      >
-                        {refunding === order.id ? 'Processing Refund...' : 'Reject & Refund'}
+                      <button onClick={() => setRejectModal(order)} disabled={refunding === order.id} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        Reject & Refund
                       </button>
                     </>
                   )}
 
                   {showActionButton && lowerStatus !== 'pending' && (
-                    <button 
-                      onClick={() => handleNextStatus(order.id, order.type)} 
-                      className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
-                    >
+                    <button onClick={() => handleNextStatus(order.id, order.type)} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors">
                       Mark as {getNextLabel(lowerStatus, order.type)}
                     </button>
                   )}
 
                   {order.status === 'denied' && (
-                    <span className="text-sm text-gray-500 dark:text-gray-400 italic">
-                      Order rejected - Customer refunded
-                    </span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400 italic">Order rejected - Customer refunded</span>
                   )}
                 </div>
               </div>
@@ -285,6 +252,26 @@ export default function RestaurantOrders({ restaurantId }) {
           </div>
         )}
       </div>
+
+      {/* Reject Modal */}
+      {rejectModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-lg p-6 w-96 shadow-lg">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Reject Order #{rejectModal.id}</h3>
+            <textarea
+              className="w-full p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              rows={4}
+              placeholder="Enter reason for rejection"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={() => setRejectModal(null)} className="px-4 py-2 bg-gray-300 dark:bg-gray-700 rounded-md hover:bg-gray-400 dark:hover:bg-gray-600">Cancel</button>
+              <button onClick={handleRejectConfirm} className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Confirm & Refund</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
