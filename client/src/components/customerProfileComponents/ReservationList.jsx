@@ -13,7 +13,8 @@ export default function ReservationList() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
-  const [confirming, setConfirming] = useState(null); // store id of the item being confirmed
+  const [confirming, setConfirming] = useState(null);
+  const [refunding, setRefunding] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -32,6 +33,7 @@ export default function ReservationList() {
     load();
   }, []);
 
+  // Step 1: Cancel reservation
   const cancelNow = async (id) => {
     try {
       await axios.post(`/api/reservations/${id}/cancel`);
@@ -40,6 +42,35 @@ export default function ReservationList() {
     } catch (e) {
       const msg = e?.response?.data?.message || "Unable to cancel.";
       toast.error(msg);
+    }
+  };
+
+  // Step 2: Process refund
+  const handleRefundAfterCancel = async (reservationId) => {
+    try {
+      setRefunding(reservationId);
+
+      const refundRes = await axios.post("/api/refunds/reservation", {
+        reservationId, // updated key for your backend
+
+      });
+
+      if (refundRes.data.success) {
+        const { total_amount, items_refunded, new_balance } = refundRes.data.refund;
+        toast.success(
+          `Refunded ${total_amount} coins. Customer new balance: ${new_balance}`
+        );
+      } else {
+        toast.error("Refund failed: " + refundRes.data.message);
+      }
+    } catch (err) {
+      console.error(err);
+      const errorMsg =
+        err.response?.data?.message ||
+        "Failed to process refund. Please try again later.";
+      toast.error(errorMsg);
+    } finally {
+      setRefunding(null);
     }
   };
 
@@ -54,7 +85,6 @@ export default function ReservationList() {
 
   return (
     <div className="p-6">
-      {/* Toast container */}
       <Toaster
         position="top-center"
         toastOptions={{
@@ -146,7 +176,7 @@ export default function ReservationList() {
         </table>
       </div>
 
-      {/* Cancel confirmation dialog */}
+      {/* Confirmation Dialog */}
       <Dialog
         open={!!confirming}
         onClose={() => setConfirming(null)}
@@ -159,7 +189,7 @@ export default function ReservationList() {
             </Dialog.Title>
             <Dialog.Description className="text-sm text-gray-600 dark:text-gray-400 mb-5">
               Cancel this reservation? If it’s 24+ hours before the start time, it
-              will be cancelled immediately.
+              will be cancelled immediately and your payment will be refunded.
             </Dialog.Description>
 
             <div className="flex justify-end gap-3">
@@ -170,13 +200,16 @@ export default function ReservationList() {
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  cancelNow(confirming.id);
+                onClick={async () => {
+                  if (!confirming) return;
+                  await cancelNow(confirming.id);
+                  await handleRefundAfterCancel(confirming.id);
                   setConfirming(null);
                 }}
-                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-medium"
+                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-medium disabled:opacity-50"
+                disabled={!!refunding}
               >
-                Confirm
+                {refunding === confirming?.id ? "Processing..." : "Confirm"}
               </button>
             </div>
           </Dialog.Panel>

@@ -1,4 +1,5 @@
 // server/controllers/reservationController.js
+import pool from "../config/db.js";
 import {
   getSlotByLabel,
   getSlotById,

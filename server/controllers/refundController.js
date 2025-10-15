@@ -171,12 +171,12 @@ export const processReservationRefund = async (req, res) => {
   
   try {
     const userId = req.user.id;
-    const { reservationId, reservationDateTime } = req.body;
+    const { reservationId } = req.body;
 
-    if (!reservationId || !reservationDateTime) {
+    if (!reservationId ) {
       return res.status(400).json({
         success: false,
-        message: 'Reservation ID and datetime are required'
+        message: 'Reservation ID is required'
       });
     }
 
@@ -212,20 +212,6 @@ export const processReservationRefund = async (req, res) => {
       });
     }
 
-    // Calculate hours until reservation
-    const now = new Date();
-    const reservationDate = new Date(reservationDateTime);
-    const hoursUntilReservation = (reservationDate - now) / (1000 * 60 * 60);
-
-    // Validate refund eligibility based on cancellation policy
-    if (hoursUntilReservation < 24) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({
-        success: false,
-        message: 'Refund not available. Cancellation must be at least 24 hours before reservation.',
-        hours_remaining: Math.floor(hoursUntilReservation * 10) / 10
-      });
-    }
 
     // Full refund for ≥24 hours
     const refundAmount = Math.abs(transaction.amount_coins);
@@ -239,13 +225,12 @@ export const processReservationRefund = async (req, res) => {
       transactionId: transaction.id,
       reservationId,
       refundAmountCoins: refundAmount,
-      refundReason: `Reservation cancelled ${Math.floor(hoursUntilReservation)} hours in advance`,
+      refundReason: `Reservation cancelled`,
       refundType: 'RESERVATION_CANCEL',
       restaurantId,
       status: 'PENDING',
       metadata: {
         original_amount: refundAmount,
-        hours_before_reservation: hoursUntilReservation,
         commission_reversed: commissionCoins,
         restaurant_amount_reversed: restaurantCoins,
         ip_address: req.ip,
@@ -299,7 +284,6 @@ export const processReservationRefund = async (req, res) => {
       amount: refundAmount,
       reservation_id: reservationId,
       refund_type: 'RESERVATION_CANCEL',
-      hours_before: hoursUntilReservation
     }, client);
 
     await client.query('COMMIT');

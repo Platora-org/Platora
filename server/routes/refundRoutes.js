@@ -7,6 +7,7 @@ import processOrderRefund, {
 } from '../controllers/refundController.js';
 import verifyJWT from '../middleware/verifyToken.js';
 import checkRole from '../middleware/requireRole.js';
+import reservationController from "../controllers/reservationController.js";
 
 const router = express.Router();
 
