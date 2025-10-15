@@ -5,8 +5,7 @@ export default function RestaurantOrders({ restaurantId }) {
   const [orders, setOrders] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // base axios instance (optional)
+  const [refunding, setRefunding] = useState(null); // Track which order is being refunded
 
   useEffect(() => {
     let mounted = true;
@@ -14,7 +13,7 @@ export default function RestaurantOrders({ restaurantId }) {
       try {
         setLoading(true);
         const res = await axiosInstance.get(`/api/restaurant-orders/${restaurantId}`);
-        console.log("waht is res????",res.data);
+        console.log("what is res????", res.data);
         if (!mounted) return;
         setOrders(res.data);
       } catch (err) {
@@ -60,12 +59,50 @@ export default function RestaurantOrders({ restaurantId }) {
   };
 
   const handleReject = async (id) => {
+    // Prompt for rejection reason
+    const reason = window.prompt("Please provide a reason for rejection (required for customer notification):");
+    if (!reason || reason.trim() === "") {
+      alert("Rejection reason is required");
+      return;
+    }
+
+    if (!window.confirm(`Reject this order and refund customer?\n\nReason: ${reason}\n\nCustomer will receive a full refund to their wallet.`)) {
+      return;
+    }
+
     try {
-      const res = await axiosInstance.patch(`/api/restaurant-orders/${id}/status`, { status: 'denied' });
-      updateLocalOrder(id, { status: res.data.status });
+      setRefunding(id);
+      
+      // First, update order status to denied
+      await axiosInstance.patch(`/api/restaurant-orders/${id}/status`, { status: 'denied' });
+      
+      // Then, process refund
+      const refundRes = await axiosInstance.post('/api/refunds/order', {
+        restaurantOrderId: id,
+        reason: reason.trim()
+      });
+
+      if (refundRes.data.success) {
+        const { total_amount, items_refunded, new_balance } = refundRes.data.refund;
+        alert(
+          `✓ Order rejected successfully!\n\n` +
+          `Refunded: ${total_amount} coins\n` +
+          `Items refunded: ${items_refunded}\n` +
+          `Customer's new balance: ${new_balance} coins`
+        );
+        updateLocalOrder(id, { status: 'denied' });
+      } else {
+        alert("Order status updated but refund failed: " + refundRes.data.message);
+      }
     } catch (err) {
       console.error(err);
-      alert("Failed to reject order");
+      const errorMsg = err.response?.data?.message || "Failed to reject order and process refund";
+      alert(`Error: ${errorMsg}`);
+      
+      // If refund failed, might want to revert order status
+      // But usually better to keep it denied and handle refund manually
+    } finally {
+      setRefunding(null);
     }
   };
 
@@ -85,6 +122,15 @@ export default function RestaurantOrders({ restaurantId }) {
   return (
     <div className="p-6">
       <h1 className="mb-4 text-2xl font-bold text-gray-900 dark:text-gray-100">Restaurant Orders</h1>
+
+      {/* Info Banner */}
+      <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+        <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">Order Rejection Policy</h3>
+        <p className="text-sm text-blue-800 dark:text-blue-200">
+          When you reject an order, the customer will automatically receive a <strong>full refund</strong> to their wallet. 
+          Please provide a clear reason for the rejection.
+        </p>
+      </div>
 
       <div className="space-y-6">
         {orders.map(order => (
@@ -120,24 +166,64 @@ export default function RestaurantOrders({ restaurantId }) {
             </div>
 
             <div className="flex justify-between items-center border-t border-gray-200 bg-gray-50 px-6 py-3 dark:border-gray-700 dark:bg-gray-800">
-              <div />
+              <div>
+                {refunding === order.id && (
+                  <span className="text-sm text-gray-600 dark:text-gray-400 italic">
+                    Processing refund...
+                  </span>
+                )}
+              </div>
               <div className="flex gap-2">
                 {order.status === 'pending' && (
                   <>
-                    <button onClick={() => handleAccept(order.id)} className="rounded-lg bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700">Accept</button>
-                    <button onClick={() => handleReject(order.id)} className="rounded-lg bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700">Reject</button>
+                    <button 
+                      onClick={() => handleAccept(order.id)} 
+                      className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={refunding === order.id}
+                    >
+                      Accept Order
+                    </button>
+                    <button 
+                      onClick={() => handleReject(order.id)} 
+                      className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={refunding === order.id}
+                    >
+                      {refunding === order.id ? 'Processing Refund...' : 'Reject & Refund'}
+                    </button>
                   </>
                 )}
 
                 {['accepted','preparing','ready'].includes(order.status) && (
-                  <button onClick={() => handleNextStatus(order.id)} className="rounded-lg bg-green-600 px-3 py-1 text-sm text-white hover:bg-blue-700">
+                  <button 
+                    onClick={() => handleNextStatus(order.id)} 
+                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+                  >
                     Mark as {order.status === 'accepted' ? 'Preparing' : order.status === 'preparing' ? 'Ready' : 'Delivered'}
                   </button>
+                )}
+
+                {order.status === 'denied' && (
+                  <span className="text-sm text-gray-500 dark:text-gray-400 italic">
+                    Order rejected - Customer refunded
+                  </span>
+                )}
+
+                {order.status === 'delivered' && (
+                  <span className="text-sm text-green-600 dark:text-green-400 font-medium">
+                    ✓ Completed
+                  </span>
                 )}
               </div>
             </div>
           </div>
         ))}
+
+        {orders.length === 0 && (
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+            <p className="text-lg">No orders yet</p>
+            <p className="text-sm mt-2">Orders will appear here when customers place them</p>
+          </div>
+        )}
       </div>
     </div>
   );

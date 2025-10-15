@@ -34,6 +34,7 @@ import adminReservationsRoutes from "./routes/adminReservationRoutes.js";
 import recipeRoutes from './routes/recipeRoutes.js';
 import restaurantProfileRoutes from './routes/restaurantProfileRoutes.js'; 
 import securutyAuditRoutes from './routes/securityAuditRoutes.js';
+import refundRoutes from './routes/refundRoutes.js';
 
 
 const app = express();
@@ -101,6 +102,7 @@ app.use('/api/wallet', (req, res, next) => {
 
 app.use('/api/wallet', walletRoutes);
 app.use('/api/security-audit', securutyAuditRoutes);
+app.use('/api/refunds', refundRoutes);
 
 app.use("/api/reservations", reservationRoutes);
 
