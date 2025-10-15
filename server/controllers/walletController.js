@@ -1053,7 +1053,7 @@ export const spendCoins = async (req, res) => {
 
 
       console.log(menu_item_id);
-      console.log(reservationId);
+      console.log("========================================================================", reservationId, "====================================================================================================")
   
       let restaurantId = null;
   

@@ -5,11 +5,11 @@ import axiosInstance from "../../utils/axiosInstance";
 import { Plus, Loader2, Trash2 } from "lucide-react";
 
 function DeliveryAgentManagement() {
+  const [errors, setErrors] = useState({});
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState(null);
-
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -18,6 +18,42 @@ function DeliveryAgentManagement() {
   const [phone, setContact] = useState(""); 
 
   const validatePhone = (phone) => /^07\d{8}$/.test(phone);
+
+  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+const handleEmailChange = (e) => {
+  const val = e.target.value;
+  // Allows only valid email characters
+  const sanitizedValue = val.replace(/[^a-zA-Z0-9@._-]/g, '');
+  setEmail(sanitizedValue);
+  setErrors((prev) => ({
+    ...prev,
+    email: validateEmail(sanitizedValue) ? '' : 'Invalid email format',
+  }));
+};
+
+
+    const handlePhoneChange = (e) => {
+        const val = e.target.value;
+        // Allows only numbers and limits length to 10
+        const sanitizedValue = val.replace(/[^0-9]/g, '');
+        if (sanitizedValue.length <= 10) {
+            setContact(sanitizedValue);
+            setErrors(prev => ({ ...prev, phone: validatePhone(sanitizedValue) ? '' : 'Invalid phone format (e.g., 07XXXXXXXX)' }));
+        }
+    };
+
+    const handleFirstNameChange = (e) => {
+        // Allows only letters, spaces, and hyphens for names
+        const sanitizedValue = e.target.value.replace(/[^a-zA-Z\s-]/g, '');
+        setFirstName(sanitizedValue);
+    };
+    
+    const handleLastNameChange = (e) => {
+        // Allows only letters, spaces, and hyphens for names
+        const sanitizedValue = e.target.value.replace(/[^a-zA-Z\s-]/g, '');
+        setLastName(sanitizedValue);
+    };
 
   // Fetch agents on mount
   useEffect(() => {
@@ -174,21 +210,21 @@ function DeliveryAgentManagement() {
             type="text"
             placeholder="First Name"
             value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
+            onChange={handleFirstNameChange}
             className="block text-sm w-full px-3 sm:px-4 py-2 sm:py-2.5 text-gray-700 placeholder-gray-400 bg-white border border-gray-200 rounded-lg dark:placeholder-gray-600 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-500 focus:outline-none focus:ring-0"
           />
           <input
             type="text"
             placeholder="Last Name"
             value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
+            onChange={handleLastNameChange}
             className="block text-sm w-full px-3 sm:px-4 py-2 sm:py-2.5 text-gray-700 placeholder-gray-400 bg-white border border-gray-200 rounded-lg dark:placeholder-gray-600 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-500 focus:outline-none focus:ring-0"
           />
           <input
             type="email"
             placeholder="Email Address"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={handleEmailChange}
             className="block text-sm w-full px-3 sm:px-4 py-2 sm:py-2.5 text-gray-700 placeholder-gray-400 bg-white border border-gray-200 rounded-lg dark:placeholder-gray-600 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-500 focus:outline-none focus:ring-0"
           />
           <input
@@ -202,7 +238,7 @@ function DeliveryAgentManagement() {
             type="text"
             placeholder="Phone Number (07xxxxxxxx)"
             value={phone}
-            onChange={(e) => setContact(e.target.value)}
+            onChange={handlePhoneChange}
             className="block text-sm w-full px-3 sm:px-4 py-2 sm:py-2.5 text-gray-700 placeholder-gray-400 bg-white border border-gray-200 rounded-lg dark:placeholder-gray-600 dark:bg-gray-900 dark:text-gray-300 dark:border-gray-700 focus:border-emerald-500 dark:focus:border-emerald-500 focus:outline-none focus:ring-0"
           />
         </div>

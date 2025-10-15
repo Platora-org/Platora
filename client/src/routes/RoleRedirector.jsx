@@ -16,10 +16,10 @@ const RoleRedirector = () => {
 
     switch (user.role) {
       case "admin":
-        navigate("/admin", { replace: true });
+        navigate("/admin/walletAnalytics", { replace: true });
         break;
       case "restaurant":
-        navigate("/restaurant", { replace: true });
+        navigate("/restaurant/wallet", { replace: true });
         break;
       case "customer":
         navigate("/", { replace: true });

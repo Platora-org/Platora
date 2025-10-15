@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { 
+import {
   BarChart,
   Bar,
   XAxis,
@@ -53,14 +53,14 @@ const AnalyticsDashboard = () => {
   // Date validation function (same as TransactionList)
   const validateAndSetDateRange = (field, value) => {
     const newDateRange = { ...dateRange };
-    
+
     if (field === 'startDate') {
       newDateRange.startDate = value;
-      
+
       // If end date is before the new start date, auto-correct end date
       const startDate = new Date(value);
       const endDate = new Date(newDateRange.endDate);
-      
+
       if (endDate < startDate) {
         newDateRange.endDate = value;
         setSuccessMessage('End date automatically adjusted to match start date');
@@ -70,7 +70,7 @@ const AnalyticsDashboard = () => {
       // For end date, only allow if it's not before start date
       const startDate = new Date(dateRange.startDate);
       const selectedEndDate = new Date(value);
-      
+
       if (selectedEndDate < startDate) {
         // Auto-correct: set end date to start date
         newDateRange.endDate = dateRange.startDate;
@@ -80,7 +80,7 @@ const AnalyticsDashboard = () => {
         newDateRange.endDate = value;
       }
     }
-    
+
     setDateRange(newDateRange);
   };
 
@@ -91,15 +91,15 @@ const AnalyticsDashboard = () => {
         startDate: dateRange.startDate,
         endDate: dateRange.endDate
       };
-      
+
       console.log('Loading analytics with params:', params);
-      
+
       // Try each endpoint individually with axios
       let analyticsData = null;
       let trendsData = null;
       let customersData = null;
       let hasErrors = false;
-      
+
       try {
         console.log('Fetching dashboard analytics...');
         const response = await api.get('/analytics/dashboard', { params });
@@ -109,19 +109,19 @@ const AnalyticsDashboard = () => {
         console.warn('Analytics dashboard endpoint error:', error.message);
         hasErrors = true;
         analyticsData = {
-          customers: { 
-            total_customers: 0, 
-            active_customers: 0, 
-            total_coins_in_circulation: 0, 
-            avg_balance_per_customer: 0, 
-            customers_with_transactions: 0 
+          customers: {
+            total_customers: 0,
+            active_customers: 0,
+            total_coins_in_circulation: 0,
+            avg_balance_per_customer: 0,
+            customers_with_transactions: 0
           },
           transactions: [],
           restaurants: [],
           platformRevenue: []
         };
       }
-      
+
       try {
         console.log('Fetching trends...');
         const response = await api.get('/analytics/trends', { params });
@@ -132,7 +132,7 @@ const AnalyticsDashboard = () => {
         hasErrors = true;
         trendsData = [];
       }
-      
+
       try {
         console.log('Fetching customers...');
         const response = await api.get('/analytics/customers', { params });
@@ -143,29 +143,29 @@ const AnalyticsDashboard = () => {
         hasErrors = true;
         customersData = [];
       }
-      
+
       setAnalytics(analyticsData);
       setTrends(trendsData);
       setTopCustomers(customersData);
-      
+
       if (hasErrors) {
         setError('Some analytics data is temporarily unavailable. Please check console for details.');
       } else {
         setError(''); // Clear any previous errors
       }
-      
+
     } catch (error) {
       console.error('Critical error loading analytics:', error);
       setError(`Analytics service is currently unavailable: ${error.message}`);
-      
+
       // Set empty data on critical error
       setAnalytics({
-        customers: { 
-          total_customers: 0, 
-          active_customers: 0, 
-          total_coins_in_circulation: 0, 
-          avg_balance_per_customer: 0, 
-          customers_with_transactions: 0 
+        customers: {
+          total_customers: 0,
+          active_customers: 0,
+          total_coins_in_circulation: 0,
+          avg_balance_per_customer: 0,
+          customers_with_transactions: 0
         },
         transactions: [],
         restaurants: [],
@@ -182,12 +182,12 @@ const AnalyticsDashboard = () => {
   const setQuickDateRange = (days) => {
     const endDate = new Date();
     const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
-    
+
     const newRange = {
       startDate: startDate.toISOString().split('T')[0],
       endDate: endDate.toISOString().split('T')[0]
     };
-    
+
     setDateRange(newRange);
   };
 
@@ -209,7 +209,7 @@ const AnalyticsDashboard = () => {
   // Process data for charts
   const processTransactionData = () => {
     if (!analytics?.transactions || !Array.isArray(analytics.transactions)) return [];
-    
+
     return analytics.transactions.map(t => ({
       type: t.transaction_type,
       count: parseInt(t.transaction_count) || 0,
@@ -220,7 +220,7 @@ const AnalyticsDashboard = () => {
 
   const processTopRestaurants = () => {
     if (!analytics?.restaurants || !Array.isArray(analytics.restaurants)) return [];
-    
+
     return analytics.restaurants.slice(0, 5).map(r => ({
       name: (r.name && r.name.length > 15) ? r.name.substring(0, 15) + '...' : (r.name || 'Unknown'),
       fullName: r.name || 'Unknown',
@@ -232,7 +232,7 @@ const AnalyticsDashboard = () => {
 
   const processTrendsData = () => {
     if (!trends || !Array.isArray(trends)) return [];
-    
+
     const dailyData = {};
     trends.forEach(trend => {
       const date = trend.date;
@@ -241,14 +241,14 @@ const AnalyticsDashboard = () => {
       }
       dailyData[date][trend.transaction_type] = parseInt(trend.total_coins) || 0;
     });
-    
+
     return Object.values(dailyData).sort((a, b) => new Date(a.date) - new Date(b.date));
   };
 
   // Fixed coins circulation calculation
   const calculateCoinsInCirculation = () => {
     if (!analytics?.transactions || !Array.isArray(analytics.transactions)) return 0;
-    
+
     let circulation = 0;
     analytics.transactions.forEach(t => {
       const coins = parseInt(t.total_coins) || 0;
@@ -258,7 +258,7 @@ const AnalyticsDashboard = () => {
         circulation -= coins; // Remove coins from circulation
       }
     });
-    
+
     return Math.max(0, circulation); // Ensure non-negative
   };
 
@@ -319,7 +319,7 @@ const AnalyticsDashboard = () => {
               </div>
             </div>
           </div>
-          
+
           {/* Alerts */}
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-4 mb-6">
@@ -337,10 +337,10 @@ const AnalyticsDashboard = () => {
               </div>
             </div>
           )}
-          
+
           <div className="border rounded-lg p-4 bg-emerald-50 border-emerald-200 dark:bg-emerald-900/30 dark:border-emerald-700/50">
             <p className="text-sm text-emerald-700 dark:text-emerald-300">
-              <strong>Analytics Overview:</strong> Track platform performance, user engagement, and revenue metrics across the ecosystem. 
+              <strong>Analytics Overview:</strong> Track platform performance, user engagement, and revenue metrics across the ecosystem.
               {error && <span className="block mt-1 text-orange-700 dark:text-orange-300">Note: Some analytics data may be limited due to server configuration.</span>}
             </p>
           </div>
@@ -352,7 +352,7 @@ const AnalyticsDashboard = () => {
             <Filter className="w-5 h-5 text-gray-500 mr-2" />
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Date Range Filters</h3>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -366,7 +366,7 @@ const AnalyticsDashboard = () => {
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white"
               />
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 End Date
@@ -379,7 +379,7 @@ const AnalyticsDashboard = () => {
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 dark:bg-gray-700 dark:text-white"
               />
             </div>
-            
+
             <div className="flex items-end">
               <button
                 onClick={loadAnalytics}
@@ -441,6 +441,61 @@ const AnalyticsDashboard = () => {
           </div>
         </div>
 
+
+        {/* USer Reports & Analytics Section */}
+        <div className="mt-3 mb-5 bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5 flex flex-col md:flex-row md:items-center md:justify-between shadow-sm">
+          <div className="flex items-center gap-3 mb-3 md:mb-0">
+            <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6 text-emerald-600 dark:text-emerald-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.8}
+                  d="M9 17v-2a2 2 0 012-2h2a2 2 0 012 2v2m-6 4h6a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm-2-8V5a2 2 0 012-2h2m4 0h2a2 2 0 012 2v6"
+                />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                User Reports & Analytics
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Generate comprehensive PDF reports for the selected date range
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              window.open(`http://localhost:3000/admin/profile/users/export`, "_blank");
+            }}
+            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow transition"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.8}
+                d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"
+              />
+            </svg>
+            Generate Report
+          </button>
+        </div>
+
+
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard
@@ -496,7 +551,7 @@ const AnalyticsDashboard = () => {
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="count"
-                  label={({type, count}) => `${type}: ${count}`}
+                  label={({ type, count }) => `${type}: ${count}`}
                 >
                   {transactionData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -555,7 +610,7 @@ const AnalyticsDashboard = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
-                <Tooltip 
+                <Tooltip
                   formatter={(value, name, props) => [
                     `${value} coins`,
                     name === 'earnings' ? 'Net Earnings' : name === 'commission' ? 'Commission Paid' : 'Transactions'
@@ -600,12 +655,11 @@ const AnalyticsDashboard = () => {
                 {topCustomers.slice(0, 10).map((customer, index) => (
                   <tr key={customer.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                     <td className="py-4 px-4 text-gray-900 dark:text-white font-semibold">
-                      <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${
-                        index === 0 ? 'bg-yellow-100 text-yellow-800' :
-                        index === 1 ? 'bg-gray-100 text-gray-800' :
-                        index === 2 ? 'bg-orange-100 text-orange-800' :
-                        'bg-emerald-100 text-emerald-800'
-                      }`}>
+                      <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${index === 0 ? 'bg-yellow-100 text-yellow-800' :
+                          index === 1 ? 'bg-gray-100 text-gray-800' :
+                            index === 2 ? 'bg-orange-100 text-orange-800' :
+                              'bg-emerald-100 text-emerald-800'
+                        }`}>
                         {index + 1}
                       </div>
                     </td>

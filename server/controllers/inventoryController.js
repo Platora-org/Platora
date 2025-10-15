@@ -73,7 +73,7 @@ const inventoryController = {
                 item_name: dbRes.rows[0].name,
                 direction,
                 quantity: Number(quantity),
-                reason : 'b/b/f'
+                reason: 'b/b/f'
             });
 
             return res.status(201).json(dbRes.rows[0]);
@@ -89,7 +89,7 @@ const inventoryController = {
             const restaurantId = req.user.restaurantId;
             const { id } = req.params;
             const { name, unit, quantity = 0, reorder_level = 0 } = req.body;
-            
+
 
             if (!name || !NAME_REGEX.test(name)) {
                 return res.status(400).json({ message: 'Invalid name' });
@@ -175,34 +175,147 @@ const inventoryController = {
     },
 
     // GET /api/v1/inventory/adjustments
-async listAdjustments(req, res) {
-    try {
-        const restaurantId = req.user.restaurantId;
-        const r = await Adjustments.listForRestaurant(restaurantId);
-        return res.json(r.rows);
-    } catch (err) {
-        console.error(err);
-        return res.status(500).json({ message: 'Failed to list adjustments' });
-    }
-},
+    async listAdjustments(req, res) {
+        try {
+            const restaurantId = req.user.restaurantId;
+            const r = await Adjustments.listForRestaurant(restaurantId);
+            return res.json(r.rows);
+        } catch (err) {
+            console.error(err);
+            return res.status(500).json({ message: 'Failed to list adjustments' });
+        }
+    },
 
-async exportAdjustments(req, res) {
+    async exportAdjustments(req, res) {
     try {
         const restaurantId = req.user.restaurantId;
+        const restaurantName = req.user.restaurantName;
         const r = await Adjustments.listForRestaurantAsc(restaurantId);
         const adjustments = r.rows;
 
-        const doc = new PDFDocument({ margin: 50, size: 'A4' });
+        const doc = new PDFDocument({ 
+            size: 'A4',
+            margins: { top: 60, bottom: 60, left: 60, right: 60 }
+        });
+
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader(
             "Content-Disposition",
             `attachment; filename=inventory-account-${restaurantId}.pdf`
         );
+
+        // Handle PDF errors
+        doc.on('error', (err) => {
+            console.error('PDF generation error:', err);
+            if (!res.headersSent) {
+                res.status(500).json({ 
+                    success: false, 
+                    message: 'PDF generation failed',
+                    error: err.message 
+                });
+            }
+        });
+
         doc.pipe(res);
 
-        // Main title
-        doc.fontSize(20).font('Helvetica-Bold').text("Inventory Accounts", { align: "center" });
-        doc.moveDown(2);
+        // Professional emerald theme colors
+        const primaryColor = '#065f46';    // Emerald dark
+        const secondaryColor = '#f0fdf4';  // Emerald light background
+        const accentColor = '#10b981';     // Emerald accent
+        const textDark = '#111827';        // Nearly black
+        const textMedium = '#4b5563';      // Medium gray
+        const textLight = '#6b7280';       // Light gray
+        const successColor = '#059669';    // Emerald green
+        const dangerColor = '#dc2626';     // Red
+
+        // Page dimensions
+        const pageWidth = doc.page.width;
+        const pageHeight = doc.page.height;
+        const leftMargin = 60;
+        const rightMargin = pageWidth - 60;
+        const contentWidth = rightMargin - leftMargin;
+
+        // Generate unique report ID
+        const now = new Date();
+        const timestamp = now.getTime().toString().slice(-6);
+        const reportId = `IA-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-${timestamp}`;
+        const generationTime = now.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        // Professional header with emerald theme
+        doc.rect(0, 0, pageWidth, 100).fill(primaryColor);
+
+        // Company/Restaurant name
+        doc.fillColor('white')
+           .fontSize(28)
+           .font('Times-Bold')
+           .text(restaurantName || 'RESTAURANT', leftMargin, 25);
+
+        doc.fontSize(12)
+           .font('Times-Roman')
+           .text('Inventory Management System', leftMargin, 58);
+
+        // Report title - right aligned
+        doc.fontSize(16)
+           .font('Times-Bold')
+           .text('INVENTORY ACCOUNTS', rightMargin - 190, 32);
+
+        doc.fontSize(8)
+           .font('Times-Roman')
+           .text('Stock Movement Report', rightMargin - 190, 54);
+
+        let currentY = 130;
+
+        // Report information header
+        doc.fillColor(textDark)
+           .fontSize(16)
+           .font('Times-Bold')
+           .text('Report Information', leftMargin, currentY);
+
+        currentY += 25;
+
+        // Report information layout
+        const labelWidth = 120;
+        const valueStartX = leftMargin + labelWidth;
+
+        // Restaurant ID
+        doc.fontSize(10)
+           .font('Times-Bold')
+           .fillColor(textMedium)
+           .text('Restaurant ID:', leftMargin, currentY);
+
+        doc.font('Times-Roman')
+           .fillColor(textDark)
+           .text(restaurantId, valueStartX, currentY);
+
+        currentY += 18;
+
+        // Generated Time
+        doc.font('Times-Bold')
+           .fillColor(textMedium)
+           .text('Generated:', leftMargin, currentY);
+
+        doc.font('Times-Roman')
+           .fillColor(textDark)
+           .text(generationTime, valueStartX, currentY);
+
+        currentY += 18;
+
+        // Total Items
+        doc.font('Times-Bold')
+           .fillColor(textMedium)
+           .text('Total Items:', leftMargin, currentY);
+
+        doc.font('Times-Roman')
+           .fillColor(textDark)
+           .text(Object.keys(adjustments.reduce((acc, a) => { acc[a.item_name] = true; return acc; }, {})).length, valueStartX, currentY);
+
+        currentY += 35;
 
         // Group adjustments by item
         const itemsMap = {};
@@ -211,54 +324,81 @@ async exportAdjustments(req, res) {
             itemsMap[a.item_name].push(a);
         });
 
-        // Column positions
-        const colDate = 50;
-        const colDescription = 160;
-        const colDirection = 330;
-        const colQuantity = 400;
-        const colBalance = 470;
+        // Column positions and widths
+        const colDate = leftMargin + 10;
+        const colDescription = leftMargin + 90;
+        const colDirection = leftMargin + 240;
+        const colQuantity = leftMargin + 330;
+        const colBalance = leftMargin + 420;
+
+        const rowHeight = 20;
+        const headerHeight = 30;
 
         for (const itemName of Object.keys(itemsMap)) {
             const itemAdjustments = itemsMap[itemName];
 
-            if (doc.y + (itemAdjustments.length + 5) * 20 > 750) {
+            // Check if we need a new page for this item
+            if (currentY + headerHeight + (itemAdjustments.length + 6) * rowHeight > pageHeight - 60) {
                 doc.addPage();
+                currentY = 60;
             }
 
-            // Item header
-            doc.fontSize(14).font('Helvetica-Bold').text(itemName, colDate, doc.y);
-            doc.moveDown(0.5);
+            // Item header with background
+            doc.rect(leftMargin, currentY, contentWidth, 35)
+               .fill(secondaryColor);
 
-            // Table header
-            const tableTop = doc.y;
-            doc
-                .fontSize(12)
-                .font('Helvetica-Bold')
-                .text("Date", colDate, tableTop)
-                .text("Description", colDescription, tableTop)
-                .text("Direction", colDirection, tableTop)
-                .text("Quantity", colQuantity, tableTop)
-                .text("Balance", colBalance, tableTop);
+            doc.fontSize(14)
+               .font('Times-Bold')
+               .fillColor(primaryColor)
+               .text(itemName, leftMargin + 10, currentY + 12);
 
-            doc.moveDown(0.5);
-            doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
-            let y = doc.y + 5;
+            currentY += 40;
 
-            // Start with first record as b/b/f
+            // Table header background
+            doc.rect(leftMargin, currentY, contentWidth, headerHeight)
+               .fill('#f3f4f6')
+               .stroke('#9ca3af');
+
+            // Table headers
+            doc.fillColor(textDark)
+               .fontSize(10)
+               .font('Times-Bold')
+               .text("Date", colDate, currentY + 10)
+               .text("Description", colDescription, currentY + 10)
+               .text("Direction", colDirection, currentY + 10)
+               .text("Quantity", colQuantity, currentY + 10)
+               .text("Balance", colBalance, currentY + 10);
+
+            currentY += headerHeight;
+
+            // Start with first record as B/B/F
             const bbf = itemAdjustments[0];
             let runningBalance = Number(bbf.quantity);
 
             // Print the B/B/F row
-            doc
-                .fontSize(10)
-                .font('Helvetica')
-                .text(new Date(bbf.created_at).toLocaleDateString(), colDate, y)
-                .text(bbf.reason || "B/B/F", colDescription, y)
-                .text("-", colDirection, y)
-                .text(bbf.quantity, colQuantity, y)
-                .text(runningBalance, colBalance, y);
+            const rowColor = '#ffffff';
+            doc.rect(leftMargin, currentY, contentWidth, rowHeight).fill(rowColor);
 
-            y += 20;
+            doc.fontSize(9)
+               .font('Times-Roman')
+               .fillColor(textDark)
+               .text(new Date(bbf.created_at).toLocaleDateString('en-US', {
+                   month: 'short',
+                   day: 'numeric',
+                   year: '2-digit'
+               }), colDate, currentY + 6)
+               .text(bbf.reason || "B/B/F", colDescription, currentY + 6, { 
+                   width: 140, 
+                   ellipsis: true 
+               })
+               .fillColor(textMedium)
+               .text("-", colDirection, currentY + 6)
+               .fillColor(textDark)
+               .font('Times-Bold')
+               .text(bbf.quantity, colQuantity, currentY + 6)
+               .text(runningBalance.toFixed(2), colBalance, currentY + 6);
+
+            currentY += rowHeight;
 
             // Remaining adjustments
             for (let i = 1; i < itemAdjustments.length; i++) {
@@ -268,35 +408,60 @@ async exportAdjustments(req, res) {
 
                 runningBalance += direction === 'IN' ? qty : -qty;
 
-                if (y > 750) {
+                // Check if we need a new page
+                if (currentY + rowHeight > pageHeight - 60) {
                     doc.addPage();
-                    y = 50;
+                    currentY = 60;
                 }
 
-                doc
-                    .fontSize(10)
-                    .font('Helvetica')
-                    .text(new Date(a.created_at).toLocaleDateString(), colDate, y)
-                    .text(a.reason || "-", colDescription, y)
-                    .fillColor(direction === 'IN' ? 'green' : 'red')
-                    .text(direction, colDirection, y)
-                    .fillColor('black')
-                    .text(qty, colQuantity, y)
-                    .text(runningBalance, colBalance, y);
+                // Alternating row colors
+                const rowBg = i % 2 === 0 ? '#ffffff' : '#f9fafb';
+                doc.rect(leftMargin, currentY, contentWidth, rowHeight).fill(rowBg);
 
-                y += 20;
+                const directionColor = direction === 'IN' ? successColor : dangerColor;
+
+                doc.fontSize(9)
+                   .font('Times-Roman')
+                   .fillColor(textDark)
+                   .text(new Date(a.created_at).toLocaleDateString('en-US', {
+                       month: 'short',
+                       day: 'numeric',
+                       year: '2-digit'
+                   }), colDate, currentY + 6)
+                   .text(a.reason || "-", colDescription, currentY + 6, { 
+                       width: 140, 
+                       ellipsis: true 
+                   })
+                   .fillColor(directionColor)
+                   .font('Times-Bold')
+                   .text(direction, colDirection, currentY + 6)
+                   .fillColor(textDark)
+                   .font('Times-Roman')
+                   .text(qty.toFixed(2), colQuantity, currentY + 6)
+                   .font('Times-Bold')
+                   .text(runningBalance.toFixed(2), colBalance, currentY + 6);
+
+                currentY += rowHeight;
             }
 
-            // Divider and totals
-            if (y > 700) {
+            // Summary section
+            if (currentY + 100 > pageHeight - 60) {
                 doc.addPage();
-                y = 50;
+                currentY = 60;
             }
-            doc.moveTo(50, y).lineTo(550, y).stroke();
-            y += 5;
 
+            // Divider line
+            doc.strokeColor('#9ca3af')
+               .lineWidth(1)
+               .moveTo(leftMargin, currentY)
+               .lineTo(rightMargin, currentY)
+               .stroke();
+
+            currentY += 15;
+
+            // Calculate totals
             const totalIn = itemAdjustments
-                .slice(1) // exclude first record
+                .slice(1)
                 .filter(a => a.direction === 'in')
                 .reduce((sum, a) => sum + Number(a.quantity), 0);
 
@@ -305,32 +470,50 @@ async exportAdjustments(req, res) {
                 .filter(a => a.direction === 'out')
                 .reduce((sum, a) => sum + Number(a.quantity), 0);
 
-            // Show B/B/F separately + totals
-            doc
-                .fontSize(12)
-                .font('Helvetica-Bold')
-                .text("B/B/F:", colDirection, y)
-                .text(Number(bbf.quantity).toFixed(2), colBalance, y);
+            // Summary with professional styling
+            doc.rect(leftMargin, currentY, contentWidth, 90)
+               .fill(secondaryColor);
 
-            y += 20;
-            doc
-                .fillColor('green') // Set color for IN
-                .text("Total IN:", colDirection, y)
-                .text(`+${totalIn.toFixed(2)}`, colBalance, y); // Add '+' sign
+            currentY += 15;
 
-            y += 20;
-            doc
-                .fillColor('red') // Set color for OUT
-                .text("Total OUT:", colDirection, y)
-                .text(`(${totalOut.toFixed(2)})`, colBalance, y); // Add '-' sign
+            // B/B/F
+            doc.fontSize(10)
+               .font('Times-Bold')
+               .fillColor(textMedium)
+               .text("Beginning Balance:", colDirection, currentY);
 
-            y += 20;
-            doc
-                .fillColor('black') // IMPORTANT: Reset color to black
-                .text("Net Quantity:", colDirection, y)
-                .text((Number(bbf.quantity) + totalIn - totalOut).toFixed(2), colBalance, y);
+            doc.fillColor(textDark)
+               .text(Number(bbf.quantity).toFixed(2), colBalance, currentY);
 
-            doc.moveDown(2);
+            currentY += 20;
+
+            // Total IN
+            doc.fillColor(textMedium)
+               .text("Total IN:", colDirection, currentY);
+
+            doc.fillColor(successColor)
+               .text(`+${totalIn.toFixed(2)}`, colBalance, currentY);
+
+            currentY += 20;
+
+            // Total OUT
+            doc.fillColor(textMedium)
+               .text("Total OUT:", colDirection, currentY);
+
+            doc.fillColor(dangerColor)
+               .text(`(${totalOut.toFixed(2)})`, colBalance, currentY);
+
+            currentY += 20;
+
+            // Net Quantity
+            doc.fillColor(textMedium)
+               .text("Net Quantity:", colDirection, currentY);
+
+            doc.fillColor(primaryColor)
+               .fontSize(11)
+               .text((Number(bbf.quantity) + totalIn - totalOut).toFixed(2), colBalance, currentY);
+
+            currentY += 40;
         }
 
         doc.end();
@@ -339,11 +522,7 @@ async exportAdjustments(req, res) {
         return res.status(500).json({ message: "Failed to export adjustments PDF" });
     }
 }
-
 };
-
-
-
 
 
 
