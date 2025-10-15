@@ -61,8 +61,17 @@ const AdminDashboard = () => {
     }
   };
 
+  
+  const downloadPDF = () => {
+    window.open(`http://localhost:3000/admin/profile/users/export`, "_blank");
+  };
+
   return (
+    
     <div className="space-y-6">
+      <button onClick={downloadPDF}> 
+          Download PDF
+        </button>
       {/* Admin Header */}
       <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-lg p-6 text-white shadow-lg">
         <div className="flex justify-between items-start">
