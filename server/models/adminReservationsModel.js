@@ -163,3 +163,38 @@ export async function markRefundedOnly({ id, adminId }) {
   );
   return upd[0];
 }
+
+export async function getAdminReservationsReportData({ from, to, status }) {
+  const params = [from, to];
+  let query = `
+    SELECT r.id, r.reserved_date, r.slot_id, ts.label AS slot_label, ts.start_time,
+           r.guests, r.status, r.special_request, r.cancelled_at,
+          u.email AS customer_email,
+          CONCAT(u.first_name, ' ', u.last_name) AS customer_name,
+           COALESCE(
+             JSON_AGG(JSON_BUILD_OBJECT('table_code', t.table_code))
+             FILTER (WHERE t.id IS NOT NULL), '[]'
+           ) AS tables
+    FROM reservations r
+    JOIN users u ON u.id = r.user_id
+    JOIN reservation_time_slots ts ON ts.id = r.slot_id
+    LEFT JOIN reservation_tables rt ON rt.reservation_id = r.id
+    LEFT JOIN food_court_table t ON t.id = rt.table_id
+    WHERE r.reserved_date BETWEEN $1 AND $2
+  `;
+
+  if (status && status !== "all") {
+    query += ` AND r.status = $${params.length + 1}`;
+    params.push(status);
+  }
+
+  query += ` GROUP BY r.id, u.email,u.first_name, u.last_name, ts.label, ts.start_time ORDER BY r.reserved_date DESC`;
+
+  try {
+    const { rows } = await pool.query(query, params);
+    return rows;
+  } catch (err) {
+    console.error("Error running report query", err);
+    throw err;
+  }
+}

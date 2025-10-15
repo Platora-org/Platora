@@ -1,7 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axiosInstance from "../../utils/axiosInstance";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
 
 const cls = (...s) => s.filter(Boolean).join(" ");
+
+const formatDateColombo = (dateStr) => {
+  return dayjs.utc(dateStr).tz("Asia/Colombo").format("YYYY-MM-DD");
+};
 
 
 // Replace the old helpers with these:
@@ -52,8 +63,8 @@ function refundEligibility(reservedDate, slotLabel, status, startTime) {
   const ms24h = 24 * 60 * 60 * 1000;
   const now = new Date();
   return now <= new Date(start.getTime() - ms24h)
-    ? { eligible: true, reason: "Cancelled ≥ 24h before" }
-    : { eligible: false, reason: "Cancelled < 24h before" };
+    ? { eligible: true, reason: "Cancelled ≥ 12h before" }
+    : { eligible: false, reason: "Cancelled < 12h before" };
 }
 
 function Badge({ kind = "default", children }) {
@@ -71,6 +82,7 @@ function Badge({ kind = "default", children }) {
     </span>
   );
 }
+
 
 export default function AdminReservationList() {
   // filters
@@ -143,12 +155,33 @@ export default function AdminReservationList() {
     return out;
   }, [rows, status, from, to, q]);
 
+  const handleFromChange = (e) => {
+  const value = e.target.value;
+  if (to && value > to) {
+    alert("From Date cannot be after To Date.");
+    return;
+  }
+  setFrom(value);
+};
+
+  const handleToChange = (e) => {
+  const value = e.target.value;
+  if (from && value < from) {
+    alert("To Date cannot be before From Date.");
+    return;
+  }
+  setTo(value);
+};
+
+
+
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-1">Reservation List</h1>
       <p className="text-sm opacity-80 mb-4">
         View all customer reservations. Cancellations appear with refund eligibility based on the 24-hour rule.
       </p>
+      
 
       {/* Filter section with labels */}
       <div className="mb-4 grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -180,7 +213,8 @@ export default function AdminReservationList() {
           <input
             type="date"
             value={from}
-            onChange={(e) => setFrom(e.target.value)}
+            onChange={handleFromChange}
+            max={to || undefined}
             className="w-full rounded-lg border px-3 py-2 bg-white dark:bg-gray-800 dark:border-gray-700"
           />
         </div>
@@ -189,11 +223,69 @@ export default function AdminReservationList() {
           <input
             type="date"
             value={to}
-            onChange={(e) => setTo(e.target.value)}
+            onChange={handleToChange}
+            min={from || undefined}
             className="w-full rounded-lg border px-3 py-2 bg-white dark:bg-gray-800 dark:border-gray-700"
           />
         </div>
       </div>
+
+   {/* Admin Reports & Analytics Section */}
+<div className="mb-6 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 flex flex-col md:flex-row md:items-center md:justify-between">
+  <div className="flex items-center gap-3 mb-4 md:mb-0">
+    <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-6 w-6 text-emerald-600 dark:text-emerald-400"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.8}
+          d="M9 17v-2a2 2 0 012-2h2a2 2 0 012 2v2m-6 4h6a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm-2-8V5a2 2 0 012-2h2m4 0h2a2 2 0 012 2v6"
+        />
+      </svg>
+    </div>
+    <div>
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        Admin Reports & Analytics
+      </h2>
+      <p className="text-sm text-gray-600 dark:text-gray-400">
+        Generate comprehensive PDF reports for the selected date range
+      </p>
+    </div>
+  </div>
+
+  <button
+    onClick={() => {
+      const params = new URLSearchParams({ from, to, status });
+      window.open(`/api/admin/reservations/report?${params.toString()}`, "_blank");
+    }}
+    className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm transition"
+  >
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-5 w-5"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.8}
+        d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4"
+      />
+    </svg>
+    Generate Report
+  </button>
+</div>
+
+
+
 
       <div className="flex items-center gap-2 mb-3 text-sm">
         <Badge kind="booked">Booked</Badge>
@@ -255,7 +347,7 @@ export default function AdminReservationList() {
                     <td className="px-4 py-3">
                       <div className="font-medium">{r.customer_name || "—"}</div>
                       <div className="opacity-70">{r.customer_email || ""}</div></td>
-                      <td className="px-4 py-3">{new Date(r.reserved_date).toISOString().slice(0, 10)}</td>
+                      <td className="px-4 py-3">{formatDateColombo(r.reserved_date)}</td>
                     <td className="px-4 py-3">{r.slot_label || "—"}</td>
                     <td className="px-4 py-3">{r.guests}</td>
                     <td className="px-4 py-3">{tables || "—"}</td>

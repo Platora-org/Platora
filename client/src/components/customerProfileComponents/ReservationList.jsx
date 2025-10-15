@@ -1,9 +1,10 @@
-// src/pages/customer/ReservationList.jsx
 import React, { useEffect, useState } from "react";
 import axios from "../../utils/axiosInstance";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import { Dialog } from "@headlessui/react";
+import toast, { Toaster } from "react-hot-toast";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -12,6 +13,7 @@ export default function ReservationList() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+  const [confirming, setConfirming] = useState(null); // store id of the item being confirmed
 
   const load = async () => {
     setLoading(true);
@@ -31,37 +33,39 @@ export default function ReservationList() {
   }, []);
 
   const cancelNow = async (id) => {
-    if (
-      !window.confirm(
-        "Cancel this reservation? If it’s 24+ hours before the start time, it will be cancelled immediately."
-      )
-    )
-      return;
     try {
       await axios.post(`/api/reservations/${id}/cancel`);
+      toast.success("Reservation cancelled successfully.");
       await load();
-      alert("Reservation cancelled.");
     } catch (e) {
       const msg = e?.response?.data?.message || "Unable to cancel.";
-      alert(msg);
+      toast.error(msg);
     }
   };
 
-  const formatDateLocal = (isoDate) => {
-    return dayjs.utc(isoDate).tz("Asia/Colombo").format("YYYY-MM-DD");
-  };
+  const formatDateLocal = (isoDate) =>
+    dayjs.utc(isoDate).tz("Asia/Colombo").format("YYYY-MM-DD");
 
   const isCancellable = (reservedDate) => {
     const now = dayjs().tz("Asia/Colombo");
-    const reservationTime = dayjs
-      .utc(reservedDate)
-      .tz("Asia/Colombo")
-      .startOf("day");
-    return reservationTime.diff(now, "hour") >= 24;
+    const reservationTime = dayjs.utc(reservedDate).tz("Asia/Colombo").startOf("day");
+    return reservationTime.diff(now, "hour") >= 12;
   };
 
   return (
     <div className="p-6">
+      {/* Toast container */}
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          style: {
+            background: "#1f2937",
+            color: "#fff",
+            borderRadius: "10px",
+          },
+        }}
+      />
+
       <h1 className="text-2xl font-bold mb-4">My Reservations</h1>
 
       {loading && <div>Loading…</div>}
@@ -113,21 +117,16 @@ export default function ReservationList() {
                     {r.status === "booked" ? (
                       <div>
                         <button
-                          onClick={() => canCancel && cancelNow(r.id)}
-                          className={`px-3 py-1 rounded ${
+                          onClick={() => canCancel && setConfirming(r)}
+                          className={`px-3 py-1 rounded transition-colors duration-200 ${
                             canCancel
                               ? "bg-rose-600 text-white hover:bg-rose-700"
-                              : "bg-gray-300 text-gray-600 cursor-not-allowed"
+                              : "bg-rose-200 text-rose-500 cursor-not-allowed"
                           }`}
                           disabled={!canCancel}
                         >
                           Cancel
                         </button>
-                        {!canCancel && (
-                          <div className="text-xs text-gray-500 mt-1">
-                           
-                          </div>
-                        )}
                       </div>
                     ) : (
                       <span className="opacity-60">—</span>
@@ -146,6 +145,43 @@ export default function ReservationList() {
           </tbody>
         </table>
       </div>
+
+      {/* Cancel confirmation dialog */}
+      <Dialog
+        open={!!confirming}
+        onClose={() => setConfirming(null)}
+        className="relative z-50"
+      >
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <Dialog.Panel className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-xl max-w-sm w-full">
+            <Dialog.Title className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">
+              Cancel Reservation
+            </Dialog.Title>
+            <Dialog.Description className="text-sm text-gray-600 dark:text-gray-400 mb-5">
+              Cancel this reservation? If it’s 24+ hours before the start time, it
+              will be cancelled immediately.
+            </Dialog.Description>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setConfirming(null)}
+                className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  cancelNow(confirming.id);
+                  setConfirming(null);
+                }}
+                className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-medium"
+              >
+                Confirm
+              </button>
+            </div>
+          </Dialog.Panel>
+        </div>
+      </Dialog>
     </div>
   );
 }

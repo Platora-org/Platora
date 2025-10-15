@@ -144,12 +144,16 @@ export async function listReservationsByUser(userId) {
               FILTER (WHERE rt.table_id IS NOT NULL),
               '{}'
             ) AS table_ids
+             r.stored_tables
        FROM reservations r
   LEFT JOIN reservation_tables rt ON rt.reservation_id = r.id
   JOIN reservation_time_slots ts ON ts.id = r.slot_id
       WHERE r.user_id = $1
-      GROUP BY r.id, ts.label
-      ORDER BY r.reserved_date DESC, ts.sort_idx DESC, r.id DESC`,
+     GROUP BY r.id, r.reserved_date, r.slot_id, ts.label, ts.start_time,
+           r.guests, r.status, r.special_request, r.cancelled_at, r.refunded_at,
+           u.full_name, u.email
+  ORDER BY r.reserved_date DESC`
+    ,
     [userId]
   );
   return rows;
@@ -221,10 +225,17 @@ export async function updateReservation({
     await client.query("BEGIN");
 
     // ensure ownership + editable status
-    const { rows: owns } = await client.query(
-      `SELECT status FROM reservations WHERE id = $1 AND user_id = $2`,
-      [id, userId]
+    const { rowCount } = await client.query(
+      `UPDATE reservations
+          SET status = 'cancelled',
+              cancelled_at = NOW(),
+              updated_at = NOW(),
+              stored_tables = $3
+        WHERE id = $1 AND user_id = $2`,
+      [id, userId, JSON.stringify(tableData)]
     );
+
+    
     if (!owns.length) {
       throw Object.assign(new Error("Not found"), { statusCode: 404 });
     }
@@ -275,21 +286,19 @@ export async function cancelReservation(id, userId) {
   try {
     await client.query("BEGIN");
 
-    const { rowCount } = await client.query(
-      `UPDATE reservations
-          SET status = 'cancelled',
-              cancelled_at = NOW(),
-              updated_at = now()
-        WHERE id = $1 AND user_id = $2`,
-      [id, userId]
+    const { rows: tableData } = await client.query(
+      `SELECT t.table_code
+         FROM reservation_tables rt
+         JOIN food_court_table t ON t.id = rt.table_id
+        WHERE rt.reservation_id = $1`,
+      [id]
     );
     if (!rowCount) {
       throw Object.assign(new Error("Not found"), { statusCode: 404 });
     }
-
-    // free tables
     await client.query(`DELETE FROM reservation_tables WHERE reservation_id = $1`, [id]);
 
+  
     await client.query("COMMIT");
   } catch (e) {
     await client.query("ROLLBACK");
@@ -376,8 +385,7 @@ export async function setCancelRequested({ id, userId, reason = "" }) {
       [reason, id]
     );
 
-    // Free tables so others can book this slot
-    await client.query(`DELETE FROM reservation_tables WHERE reservation_id = $1`, [id]);
+   
 
     await client.query("COMMIT");
     return { ok: true };
@@ -459,7 +467,7 @@ export async function cancelIfEligible24h({ id, userId }) {
         WHERE id = $1 AND user_id = $2`,
       [id, userId]
     );
-    await client.query(`DELETE FROM reservation_tables WHERE reservation_id = $1`, [id]);
+    
     await client.query("COMMIT");
   } catch (e) {
     await client.query("ROLLBACK");
