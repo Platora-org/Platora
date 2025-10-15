@@ -1,6 +1,6 @@
 import { computeProductionPlan } from "../services/productionService.js";
 import * as PlateModel from "../models/plateModel.js";
-import { createOrder, fetchCustomerOrders } from "../models/orderModel.js";
+import { createOrder, fetchCustomerOrders, createOrderDeliveryDetails, updateOrderTypeToDelivery } from "../models/orderModel.js";
 import * as restaurantOrderModel from "../models/restaurantOrderModel.js";
 import pool from "../config/db.js";
 
@@ -31,7 +31,40 @@ export async function checkoutOrder(req, res) {
     const customerId = await PlateModel.getCustomerId(userId);
     const cartId = await PlateModel.getOrCreateCartId(customerId);
 
+    //  Create the main order (always)
     const order = await createOrder(customerId, cartId);
+    const orderId = order.id;
+
+    //  Get delivery info from frontend
+    const { orderType, phoneNumber, address } = req.body;
+
+    //  If delivery type, update order + add delivery details
+    if (orderType === "delivery") {
+      if (!phoneNumber || !address) {
+        return res.status(400).json({
+          success: false,
+          message: "Phone number and address required for delivery orders",
+        });
+      }
+
+      // Update order type and insert delivery info
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        await updateOrderTypeToDelivery(client, orderId);
+        await createOrderDeliveryDetails(client, orderId, address, phoneNumber);
+        await client.query("COMMIT");
+      } catch (err) {
+        await client.query("ROLLBACK");
+        console.error("Delivery insert error:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to add delivery details",
+        });
+      } finally {
+        client.release();
+      }
+    }
 
     res.status(201).json({ success: true, order });
   } catch (err) {
@@ -39,6 +72,7 @@ export async function checkoutOrder(req, res) {
     res.status(500).json({ success: false, message: "Checkout failed" });
   }
 }
+
 
 export async function getCustomerOrders(req, res) {
   try {

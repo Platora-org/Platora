@@ -112,4 +112,16 @@ export async function fetchCustomerOrders(customerId) {
   return Object.values(grouped);
 }
 
+//update order type to delivery
+export async function updateOrderTypeToDelivery(client, orderId) {
+  await client.query(`UPDATE orders SET type = 'delivery' WHERE id = $1`, [orderId]);
+}
 
+//inserting delivery order details
+export async function createOrderDeliveryDetails(client, orderId, address, phone) {
+  const query = `
+    INSERT INTO order_delivery_details (order_id, delivery_address, contact_number)
+    VALUES ($1, $2, $3)
+  `;
+  await client.query(query, [orderId, address, phone]);
+}

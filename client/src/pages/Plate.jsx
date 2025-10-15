@@ -5,12 +5,14 @@ import { Link } from "react-router-dom";
 import axiosInstance from "../utils/axiosInstance";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../utils/AuthContext";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 function CartPage() {
   const [cartItems, setCartItems] = useState([]);
   const [orderType, setOrderType] = useState("pickup");
-  const [fullName, setFullName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [address, setAddress] = useState("");
   const [error, setError] = useState(null);
   const { user } = useAuth();
 
@@ -31,71 +33,83 @@ function CartPage() {
   const [canProceed, setCanProceed] = useState(false);
 
   const handleCheckout = async () => {
-  setChecking(true);
-  setError(null); // Clear previous errors
+    setChecking(true);
+    setError(null); // Clear previous errors
 
-  try {
-    // Step 1: Inventory check
-    const inventoryRes = await axiosInstance.post("/api/orders/inventoryCheck");
-    console.log("Inventory check response:", inventoryRes.data);
-    
-    const shortages = inventoryRes.data.shortages || [];
-    if (shortages.length > 0) {
-      setError(shortages);
-      setCanProceed(false);
-      return; // Exit early
-    }
-    
-    console.log("All items are available!");
-
-    // Step 2: Check wallet balance
-    const walletCheckRes = await axiosInstance.post(
-      "/api/wallet/checkSufficient",
-      {
-        coins: lkrToCoins(totalPrice),
-      }
-    );
-    console.log("Wallet check:", walletCheckRes.data);
-
-    // Step 3: Process wallet spending for each item
-    for (const item of cartItems) {
-      console.log("Processing item:", item);
-      
-      const walletSpendRes = await axiosInstance.post("/api/wallet/spend", {
-        coins: lkrToCoins(item.price * item.quantity), // Fixed: multiply by quantity
-        menu_item_id: item.menu_item_id,
-        description: `Order ${item.name}`,
+    try {
+      // Step 1: Inventory check
+      const inventoryRes = await axiosInstance.post("/api/orders/inventoryCheck", {
+        orderType,
+        phoneNumber,
+        address,
       });
+      console.log("Inventory check response:", inventoryRes.data);
 
-      console.log("Wallet spend success:", walletSpendRes.data);
+      const shortages = inventoryRes.data.shortages || [];
+      if (shortages.length > 0) {
+        setError(shortages);
+        setCanProceed(false);
+        return; // Exit early
+      }
+
+      console.log("All items are available!");
+
+      // Step 2: Check wallet balance
+      const walletCheckRes = await axiosInstance.post(
+        "/api/wallet/checkSufficient",
+        {
+          coins: lkrToCoins(totalPrice),
+        }
+      );
+      console.log("Wallet check:", walletCheckRes.data);
+
+      // Step 3: Process wallet spending for each item
+      for (const item of cartItems) {
+        console.log("Processing item:", item);
+
+        const walletSpendRes = await axiosInstance.post("/api/wallet/spend", {
+          coins: lkrToCoins(item.price * item.quantity), // Fixed: multiply by quantity
+          menu_item_id: item.menu_item_id,
+          description: `Order ${item.name}`,
+        });
+
+        console.log("Wallet spend success:", walletSpendRes.data);
+      }
+
+      console.log("E-wallet balance is sufficient. Proceeding to checkout...");
+
+      // Step 4: Complete the checkout
+      const checkoutRes = await axiosInstance.post("/api/orders/checkout", { orderType, phoneNumber, address });
+      console.log("Order placed:", checkoutRes.data);
+
+      toast.success("Checkout successful!", {
+        position: "top-right",
+        autoClose: 3000, // 3 seconds
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        theme: "colored",
+      });
+      setCartItems([]);
+      setCanProceed(true);
+      window.dispatchEvent(new Event("cartUpdated"));
+
+    } catch (err) {
+      console.error("Checkout error:", err);
+
+      // Handle different error types
+      const errorMessage = err?.response?.data?.message ||
+        err?.message ||
+        "Something went wrong during checkout. Please try again.";
+
+      setError(errorMessage);
+      setCanProceed(false);
+    } finally {
+      // ALWAYS reset checking state
+      setChecking(false);
     }
-
-    console.log("E-wallet balance is sufficient. Proceeding to checkout...");
-
-    // Step 4: Complete the checkout
-    const checkoutRes = await axiosInstance.post("/api/orders/checkout", {});
-    console.log("Order placed:", checkoutRes.data);
-    
-    alert("Checkout successful!");
-    setCartItems([]);
-    setCanProceed(true);
-    window.dispatchEvent(new Event("cartUpdated"));
-
-  } catch (err) {
-    console.error("Checkout error:", err);
-    
-    // Handle different error types
-    const errorMessage = err?.response?.data?.message || 
-                        err?.message || 
-                        "Something went wrong during checkout. Please try again.";
-    
-    setError(errorMessage);
-    setCanProceed(false);
-  } finally {
-    // ALWAYS reset checking state
-    setChecking(false);
-  }
-};
+  };
 
   // Remove item
   const removeItem = async (id) => {
@@ -280,7 +294,11 @@ function CartPage() {
                 >
                   {/* Image */}
                   <img
-                    src={item.image_url}
+                    src={
+                      item.image_url
+                        ? `${import.meta.env.VITE_API_URL}${item.image_url}`
+                        : "https://placehold.co/600x400/e0e0e0/757575?text=No+Image"
+                    }
                     alt={item.name}
                     className="w-24 h-24 object-cover rounded-xl"
                     onError={(e) => {
@@ -366,7 +384,7 @@ function CartPage() {
                       value="delivery"
                       checked={orderType === "delivery"}
                       onChange={(e) => setOrderType(e.target.value)}
-                      className="text-emerald-500"
+                      className="accent-emerald-500"
                     />
                     <span className="text-gray-700 dark:text-gray-300">
                       Delivery
@@ -379,7 +397,7 @@ function CartPage() {
                       value="pickup"
                       checked={orderType === "pickup"}
                       onChange={(e) => setOrderType(e.target.value)}
-                      className="text-emerald-500"
+                      className="accent-emerald-500"
                     />
                     <span className="text-gray-700 dark:text-gray-300">
                       Pickup
@@ -392,32 +410,35 @@ function CartPage() {
               {orderType === "delivery" && (
                 <div className="space-y-4 mb-6">
                   <input
-                    type="text"
-                    placeholder="Full Name"
-                    required
-                    value={fullName}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/[^A-Za-z ]/g, "");
-                      setFullName(value);
-                    }}
-                    className="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-emerald-500"
-                  />
-                  <input
                     type="tel"
                     placeholder="Phone Number"
                     required
-                    maxLength={10}
                     value={phoneNumber}
                     onChange={(e) => {
-                      const value = e.target.value.replace(/[^0-9]/g, "");
+                      // Remove non-numeric characters
+                      let value = e.target.value.replace(/[^0-9]/g, "");
+
+                      // Restrict to max 10 digits
+                      if (value.length > 10) {
+                        value = value.slice(0, 10);
+                      }
+
+                      // Ensure it starts with 0
+                      if (value && !value.startsWith("0")) {
+                        value = "0"; // reset to 0 if user tries to type something else
+                      }
+
                       setPhoneNumber(value);
                     }}
                     className="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-emerald-500"
                   />
+
                   <textarea
                     placeholder="Delivery Address"
                     rows="3"
                     required
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
                     className="w-full px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:ring-2 focus:ring-emerald-500"
                   ></textarea>
                 </div>
@@ -433,6 +454,7 @@ function CartPage() {
             </motion.div>
           </div>
         )}
+        <ToastContainer />
       </div>
     </section>
   );
