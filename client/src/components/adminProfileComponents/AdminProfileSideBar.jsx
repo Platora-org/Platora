@@ -98,7 +98,6 @@ const AdminProfileSideBar = ({ onLogout, loggedUser }) => {
       ),
       children: [
         { label: "Admin Details", href: "/admin/details" },
-        { label: "Security Settings", href: "/admin/security" },
       ],
     },
     {

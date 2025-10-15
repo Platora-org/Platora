@@ -19,7 +19,7 @@ const RoleRedirector = () => {
         navigate("/admin", { replace: true });
         break;
       case "restaurant":
-        navigate("/restaurant", { replace: true });
+        navigate("/restaurant/wallet", { replace: true });
         break;
       case "customer":
         navigate("/", { replace: true });

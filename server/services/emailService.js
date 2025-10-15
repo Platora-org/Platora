@@ -21,6 +21,21 @@ transporter.verify((error, success) => {
   }
 });
 
+export async function sendPasswordResetEmail(to, resetLink) {
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to,
+    subject: "Password Reset Request",
+    html: `
+      <h3>Reset Your Password</h3>
+      <p>Click the link below to reset your password:</p>
+      <a href="${resetLink}" target="_blank">${resetLink}</a>
+      <p>This link will expire in 15 minutes.</p>
+    `,
+  };
+  await transporter.sendMail(mailOptions);
+}
+
 // KYC Approved Email
 export const sendKYCApprovedEmail = async (email, firstName, restaurantName) => {
   try {

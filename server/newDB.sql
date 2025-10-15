@@ -1141,3 +1141,12 @@ CREATE TABLE cart_items (
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT cart_item_unique UNIQUE (cart_id, menu_item_id) -- ✅ correct uniqueness
 );
+
+CREATE TABLE password_reset_tokens (
+  id SERIAL PRIMARY KEY,
+  user_id INT REFERENCES users(id) ON DELETE CASCADE,
+  token VARCHAR(255) NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  used BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

@@ -2,6 +2,8 @@ import { lazy } from "react";
 
 const LoginPage = lazy(() => import("../pages/LoginPage"));
 const RegisterPage = lazy(() => import("../pages/RegisterPage"));
+const ResetPage = lazy(() => import("../pages/ResetPasswordPage"));
+const ForgotPasswordPage = lazy(() => import("../pages/ForgotPasswordPage"));
 const NotFound = lazy(() => import("../pages/NotFound"))
 const Home = lazy(() => import("../pages/Home"))
 const CustomerProfile = lazy(() => import("../pages/CustomerProfile"))
@@ -86,6 +88,18 @@ export const appRoutes = [
     requiresAuth: false,
     hideHeader: true
   },
+   {
+    path: "/reset-password",
+    component: ResetPage,
+    requiresAuth: false,
+    hideHeader: true
+  },
+  {
+    path: "/forgotpassword",
+    component: ForgotPasswordPage,
+    requiresAuth: false,
+    hideHeader: true
+  },
   
   {
     path: "*",
@@ -107,10 +121,6 @@ export const appRoutes = [
     requiresAuth: true,
     allowedRoles: ["customer"],
     children: [
-      {
-        path: "",
-        component: Dashboard,
-      },
       {
         path: "analysis",
         component: Analysis,
@@ -152,10 +162,6 @@ export const appRoutes = [
     requiresAuth: true,
     allowedRoles: ["restaurant"],
     children: [
-      {
-        path: "",
-        component: RestaurantDashboard,
-      },
       {
         path: "wallet",
         component: RestaurantWallet, 

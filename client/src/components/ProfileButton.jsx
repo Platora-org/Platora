@@ -6,7 +6,7 @@ import { useAuth } from '../utils/AuthContext';
 // Profile menu configuration for different user roles
 const profileMenuConfig = {
     customer: [
-        { label: "My Profile", path: "/customerprofile/", icon: User },
+        { label: "My Profile", path: "/customerprofile/wallet", icon: User },
     ]
 };
 
