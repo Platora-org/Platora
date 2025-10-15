@@ -68,9 +68,16 @@ export async function createOrder(customerId, cartId) {
 // Step 2: Fetch orders grouped by restaurants
 export async function fetchCustomerOrders(customerId) {
   const res = await pool.query(
-    `SELECT o.id AS order_id, o.created_at, o.status AS order_status,
-            ro.id AS rest_order_id, ro.status AS rest_status, r.restaurant_name AS restaurant_name,
-            oi.quantity, oi.price, m.name AS menu_name
+    `SELECT o.id AS order_id, 
+            o.created_at, 
+            o.status AS order_status,
+            o.type,  -- ✅ ADD THIS LINE to include order type (delivery/pickup)
+            ro.id AS rest_order_id, 
+            ro.status AS rest_status, 
+            r.restaurant_name AS restaurant_name,
+            oi.quantity, 
+            oi.price, 
+            m.name AS menu_name
      FROM orders o
      JOIN restaurant_orders ro ON o.id = ro.order_id
      JOIN restaurant_profiles r ON ro.restaurant_id = r.id
@@ -89,6 +96,7 @@ export async function fetchCustomerOrders(customerId) {
         orderId: row.order_id,
         createdAt: row.created_at,
         status: row.order_status,
+        type: row.type,  // ✅ ADD THIS LINE to include type in response
         restaurants: []
       };
     }

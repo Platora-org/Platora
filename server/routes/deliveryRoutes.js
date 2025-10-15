@@ -8,7 +8,8 @@ import {
   markAsPickedUp,
   verifyDeliveryOtp,
   getActiveAgents,
-  getAllAgents
+  getAllAgents,
+  generateAgentReport
 } from "../controllers/deliveryController.js";
 
 import verifyJWT from "../middleware/verifyToken.js";
@@ -89,6 +90,14 @@ router.get(
   verifyJWT,
   checkRole("admin"),
   getAllAgents
+);
+
+// Add to existing routes
+router.get(
+  "/agent/report",
+  verifyJWT,
+  checkRole("delivery"),
+  generateAgentReport
 );
 
 export default router;
