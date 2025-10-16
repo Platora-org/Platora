@@ -578,14 +578,18 @@ export const generateMonthlyStatement = async (req, res) => {
     
     leftY += 18;
     
-    // Statement ID
+    // Statement ID - REALISTIC FORMAT
     doc.font('Times-Bold')
        .fillColor(textMedium)
        .text('Statement ID:', leftColumnX, leftY);
     
+    // Generate realistic statement ID
+    const monthFormatted = String(currentMonth).padStart(2, '0');
+    const statementId = `STMT-${userId}-${currentYear}${monthFormatted}`;
+    
     doc.font('Times-Roman')
        .fillColor(textDark)
-       .text(`STMT-${userId}-${currentMonth}-${currentYear}`, valueStartX, leftY);
+       .text(statementId, valueStartX, leftY);
     
     // Right column - Account information
     let rightY = currentY;
@@ -638,11 +642,11 @@ export const generateMonthlyStatement = async (req, res) => {
     
     currentY = Math.max(leftY, rightY) + 35;
     
-    // Summary statistics calculation
-    const totalTransactions = transactions.length;
-    const coinsSpent = Math.abs(transactions.filter(t => t.transaction_type === 'SPEND').reduce((sum, t) => sum + (t.amount_coins || 0), 0));
-    const coinsPurchased = transactions.filter(t => t.transaction_type === 'PURCHASE').reduce((sum, t) => sum + (t.amount_coins || 0), 0);
-    const totalRefunds = transactions.filter(t => t.transaction_type === 'REFUND').reduce((sum, t) => sum + (t.amount_coins || 0), 0);
+    // Summary statistics calculation - FIXED NaN ISSUES
+    const totalTransactions = transactions.length || 0;
+    const coinsSpent = Math.abs(transactions.filter(t => t.transaction_type === 'SPEND').reduce((sum, t) => sum + (parseFloat(t.amount_coins) || 0), 0));
+    const coinsPurchased = transactions.filter(t => t.transaction_type === 'PURCHASE').reduce((sum, t) => sum + (parseFloat(t.amount_coins) || 0), 0);
+    const totalRefunds = transactions.filter(t => t.transaction_type === 'REFUND').reduce((sum, t) => sum + (parseFloat(t.amount_coins) || 0), 0);
     const netBalance = coinsPurchased - coinsSpent + totalRefunds;
     
     // Professional summary section
@@ -653,16 +657,16 @@ export const generateMonthlyStatement = async (req, res) => {
     
     currentY += 25;
     
-    // Summary boxes with professional styling
+    // Summary boxes with professional styling - FIXED NaN
     const boxWidth = 120;
     const boxHeight = 45;
     const boxSpacing = 15;
     
     const summaryData = [
       { label: 'Total Transactions', value: totalTransactions, color: accentColor },
-      { label: 'Coins Purchased', value: coinsPurchased, color: successColor },
-      { label: 'Coins Spent', value: coinsSpent, color: '#dc2626' },
-      { label: 'Net Balance', value: netBalance, color: textDark }
+      { label: 'Coins Purchased', value: Math.round(coinsPurchased), color: successColor },
+      { label: 'Coins Spent', value: Math.round(coinsSpent), color: '#dc2626' },
+      { label: 'Net Balance', value: Math.round(netBalance), color: textDark }
     ];
     
     summaryData.forEach((item, index) => {
@@ -673,11 +677,15 @@ export const generateMonthlyStatement = async (req, res) => {
          .fill('#f8fafc')
          .stroke('#e2e8f0');
       
-      // Value
+      // Value - FIXED: Check for valid numbers
+      const displayValue = (typeof item.value === 'number' && !isNaN(item.value)) 
+        ? item.value.toLocaleString() 
+        : '0';
+      
       doc.fillColor(item.color)
          .fontSize(16)
          .font('Times-Bold')
-         .text(item.value.toLocaleString(), x + 10, currentY + 8, { 
+         .text(displayValue, x + 10, currentY + 8, { 
            width: boxWidth - 20, 
            align: 'center' 
          });
@@ -703,68 +711,75 @@ export const generateMonthlyStatement = async (req, res) => {
     currentY += 25;
     
     if (transactions.length > 0) {
-      // Professional table design
+      // IMPROVED TABLE DESIGN
       const tableStartY = currentY;
-      const headerHeight = 25;
-      const maxRows = 12; // Limit for A4 compliance
-      const rowHeight = 18;
-      const totalTableHeight = headerHeight + (Math.min(transactions.length, maxRows) * rowHeight);
+      const headerHeight = 28;
+      const rowHeight = 22;
+      const maxRowsPerPage = 20;
       
-      // Table background
-      doc.rect(leftMargin, tableStartY, contentWidth, totalTableHeight)
-         .fill(secondaryColor)
-         .stroke('#d1d5db');
+      // Column definitions - OPTIMIZED WIDTHS
+      const colWidths = [55, 130, 70, 60, 90, 85];
       
-      // Table header
-      doc.rect(leftMargin, tableStartY, contentWidth, headerHeight)
-         .fill('#f3f4f6')
-         .stroke('#9ca3af');
-      
-      // Column definitions
-      const colWidths = [80, 180, 80, 80, 85, 70];
-      let colX = leftMargin + 10;
-      
-      doc.fillColor(textDark)
-         .fontSize(9)
-         .font('Times-Bold');
-      
-      const headers = ['Date', 'Description', 'Type', 'Amount', 'Value (LKR)', 'Status'];
-      
-      headers.forEach((header, index) => {
-        doc.text(header, colX, tableStartY + 8, { 
-          width: colWidths[index] - 5, 
-          align: 'left' 
+      // Function to draw table header
+      const drawTableHeader = (y) => {
+        // Table header background
+        doc.rect(leftMargin, y, contentWidth, headerHeight)
+           .fillAndStroke('#e5e7eb', '#9ca3af');
+        
+        let colX = leftMargin + 8;
+        
+        doc.fillColor(textDark)
+           .fontSize(9)
+           .font('Times-Bold');
+        
+        const headers = ['Date', 'Description', 'Type', 'Amount', 'Value', 'Status'];
+        
+        headers.forEach((header, index) => {
+          doc.text(header, colX, y + 9, { 
+            width: colWidths[index] - 8, 
+            align: 'left' 
+          });
+          colX += colWidths[index];
         });
-        colX += colWidths[index];
-      });
+        
+        return y + headerHeight;
+      };
       
-      // Transaction rows
-      let rowY = tableStartY + headerHeight;
-      const displayTransactions = transactions.slice(0, maxRows);
+      // Draw initial table header
+      let rowY = drawTableHeader(tableStartY);
+      let rowCount = 0;
       
-      displayTransactions.forEach((transaction, index) => {
+      // Process all transactions with pagination
+      transactions.forEach((transaction, index) => {
+        // Check if we need a new page
+        if (rowCount >= maxRowsPerPage) {
+          doc.addPage();
+          rowY = 60;
+          rowY = drawTableHeader(rowY);
+          rowCount = 0;
+        }
+        
+        // Row background - alternating colors
         const rowColor = index % 2 === 0 ? '#ffffff' : '#f9fafb';
-        
-        // Row background
         doc.rect(leftMargin, rowY, contentWidth, rowHeight)
-           .fill(rowColor);
+           .fillAndStroke(rowColor, '#e5e7eb');
         
-        colX = leftMargin + 10;
+        let colX = leftMargin + 8;
         
         // Date
         doc.fillColor(textDark)
-           .fontSize(8)
+           .fontSize(9)
            .font('Times-Roman')
            .text(new Date(transaction.created_at).toLocaleDateString('en-US', {
              month: 'short',
              day: 'numeric'
-           }), colX, rowY + 6);
+           }), colX, rowY + 7);
         colX += colWidths[0];
         
-        // Description
-        const description = (transaction.description || 'Transaction').substring(0, 30) + 
-                           ((transaction.description || '').length > 30 ? '...' : '');
-        doc.text(description, colX, rowY + 6, { width: colWidths[1] - 5 });
+        // Description - REDUCED WIDTH
+        const description = (transaction.description || 'Transaction').substring(0, 22) + 
+                           ((transaction.description || '').length > 22 ? '...' : '');
+        doc.text(description, colX, rowY + 7, { width: colWidths[1] - 8 });
         colX += colWidths[1];
         
         // Type with color
@@ -772,116 +787,75 @@ export const generateMonthlyStatement = async (req, res) => {
                          transaction.transaction_type === 'SPEND' ? '#dc2626' : accentColor;
         
         doc.fillColor(typeColor)
-           .fontSize(8)
+           .fontSize(9)
            .font('Times-Bold')
-           .text(transaction.transaction_type || 'N/A', colX, rowY + 6);
+           .text(transaction.transaction_type || 'N/A', colX, rowY + 7);
         colX += colWidths[2];
         
-        // Amount with sign and color
-        const coins = transaction.amount_coins || 0;
-        const coinSign = coins > 0 ? '+' : '';
+        // Amount with sign and color - FIXED NaN
+        const coins = parseFloat(transaction.amount_coins) || 0;
+        const coinSign = coins >= 0 ? '+' : '';
         
         doc.fillColor(typeColor)
-           .fontSize(8)
+           .fontSize(9)
            .font('Times-Bold')
-           .text(`${coinSign}${coins}`, colX, rowY + 6);
+           .text(`${coinSign}${Math.round(coins)}`, colX, rowY + 7);
         colX += colWidths[3];
         
-        // Value
-        doc.fillColor(textMedium)
-           .fontSize(8)
-           .font('Times-Roman')
-           .text(transaction.amount_money ? 
-                 `${transaction.currency || 'LKR'} ${parseFloat(transaction.amount_money).toFixed(2)}` : 
-                 '-', colX, rowY + 6);
+        // Value - CALCULATE FOR SPEND AND REFUND TRANSACTIONS (coins * 50)
+        if (transaction.transaction_type === 'SPEND' || transaction.transaction_type === 'REFUND') {
+          const calculatedValue = Math.abs(parseFloat(transaction.amount_coins) || 0) * 50;
+          doc.fillColor(textMedium)
+             .fontSize(9)
+             .font('Times-Roman')
+             .text(`LKR ${calculatedValue.toFixed(2)}`, colX, rowY + 7, { width: colWidths[4] - 8 });
+        } else if (transaction.amount_money && parseFloat(transaction.amount_money) > 0) {
+          doc.fillColor(textMedium)
+             .fontSize(9)
+             .font('Times-Roman')
+             .text(`${transaction.currency || 'LKR'} ${parseFloat(transaction.amount_money).toFixed(2)}`, 
+                   colX, rowY + 7, { width: colWidths[4] - 8 });
+        } else {
+          doc.fillColor(textLight)
+             .text('-', colX, rowY + 7);
+        }
         colX += colWidths[4];
         
-        // Status
+        // Status - INCREASED WIDTH TO SHOW "COMPLETED"
         const statusColor = transaction.status === 'COMPLETED' ? successColor : 
                            transaction.status === 'PENDING' ? warningColor : '#dc2626';
         
         doc.fillColor(statusColor)
-           .fontSize(7)
+           .fontSize(8)
            .font('Times-Bold')
-           .text(transaction.status || 'COMPLETED', colX, rowY + 7);
+           .text(transaction.status || 'COMPLETED', colX, rowY + 8, {
+             width: colWidths[5] - 8
+           });
         
         rowY += rowHeight;
+        rowCount++;
       });
       
-      currentY = rowY + 15;
-      
-      // Show remaining transactions count
-      if (transactions.length > maxRows) {
-        doc.fillColor(textMedium)
-           .fontSize(9)
-           .font('Times-Italic')
-           .text(`... and ${transactions.length - maxRows} more transactions`, leftMargin, currentY);
-        currentY += 20;
-      }
+      currentY = rowY + 20;
       
     } else {
       // No transactions message
-      doc.rect(leftMargin, currentY, contentWidth, 40)
+      doc.rect(leftMargin, currentY, contentWidth, 50)
          .fill('#f9fafb')
          .stroke('#e5e7eb');
       
       doc.fillColor(textMedium)
          .fontSize(12)
          .font('Times-Italic')
-         .text('No transactions found for this period.', leftMargin, currentY + 15, { 
+         .text('No transactions found for this period.', leftMargin, currentY + 18, { 
            width: contentWidth, 
            align: 'center' 
          });
       
-      currentY += 60;
+      currentY += 70;
     }
     
-    // Fixed footer position for A4 compliance
-    const footerStartY = pageHeight - 100;
-    
-    // Professional separator line
-    doc.strokeColor('#9ca3af')
-       .lineWidth(1)
-       .moveTo(leftMargin, footerStartY)
-       .lineTo(rightMargin, footerStartY)
-       .stroke();
-    
-    // Center-aligned thank you message
-    doc.fillColor(accentColor)
-       .fontSize(14)
-       .font('Times-Bold')
-       .text('Thank you for choosing Us', leftMargin, footerStartY + 12, { 
-         width: contentWidth, 
-         align: 'center' 
-       });
-    
-    // Center-aligned footer text
-    doc.fillColor(textMedium)
-       .fontSize(9)
-       .font('Times-Roman')
-       .text('This is an automatically generated monthly statement from our digital wallet system.', 
-              leftMargin, footerStartY + 32, { width: contentWidth, align: 'center' });
-    
-    doc.text('For support and inquiries, please contact our customer service team.', 
-             leftMargin, footerStartY + 45, { width: contentWidth, align: 'center' });
-    
-    // Center-aligned generation timestamp
-    doc.fillColor(textLight)
-       .fontSize(8)
-       .font('Times-Roman')
-       .text(`Generated on ${new Date().toLocaleDateString('en-US', {
-         year: 'numeric',
-         month: 'long',
-         day: 'numeric',
-         hour: '2-digit',
-         minute: '2-digit'
-       })}`, leftMargin, footerStartY + 65, { width: contentWidth, align: 'center' });
-    
-    // Center-aligned statement details
-    doc.text(`Statement: STMT-${userId}-${currentMonth}-${currentYear} | Period: ${monthName}`, 
-             leftMargin, footerStartY + 80, { width: contentWidth, align: 'center' });
-    
-    // Finalize PDF
+    // Finalize PDF (NO FOOTER)
     doc.end();
     
   } catch (error) {
@@ -896,7 +870,6 @@ export const generateMonthlyStatement = async (req, res) => {
     }
   }
 };
-
 // Generate statement for selected date range and filters (Admin version) - Clean Professional Design
 export const generateAdminStatement = async (req, res) => {
   try {
@@ -1580,5 +1553,449 @@ export const getCustomerSpendingAnalytics = async (req, res) => {
       message: 'Failed to get customer analytics',
       error: error.message
     });
+  }
+};
+
+// Generate custom date range statement PDF - FINAL OPTIMIZED VERSION
+export const generateCustomStatement = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { startDate, endDate } = req.query;
+    
+    // Validate dates
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start date and end date are required'
+      });
+    }
+    
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    if (start > end) {
+      return res.status(400).json({
+        success: false,
+        message: 'Start date must be before end date'
+      });
+    }
+    
+    console.log(`Generating custom statement for user ${userId}, ${startDate} to ${endDate}`);
+    
+    const user = await AnalyticsModel.getUserInfo(userId);
+    const transactions = await AnalyticsModel.getUserTransactionsByDateRange(
+      userId, 
+      startDate + 'T00:00:00Z', 
+      endDate + 'T23:59:59Z'
+    );
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    // Set response headers immediately
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="statement-${startDate}-to-${endDate}.pdf"`);
+    res.setHeader('Cache-Control', 'no-cache');
+    
+    const doc = new PDFDocument({
+      size: 'A4',
+      margins: { top: 60, bottom: 60, left: 60, right: 60 }
+    });
+    
+    // Handle PDF errors
+    doc.on('error', (err) => {
+      console.error('PDF generation error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ 
+          success: false, 
+          message: 'PDF generation failed',
+          error: err.message 
+        });
+      }
+    });
+
+    // Pipe PDF directly to response
+    doc.pipe(res);
+    
+    // Professional emerald theme colors
+    const primaryColor = '#065f46';    // Emerald dark
+    const secondaryColor = '#f0fdf4';  // Emerald light background
+    const accentColor = '#10b981';     // Emerald accent
+    const textDark = '#111827';        // Nearly black
+    const textMedium = '#4b5563';      // Medium gray
+    const textLight = '#6b7280';       // Light gray
+    const successColor = '#059669';    // Emerald green
+    const warningColor = '#d97706';    // Professional amber
+    
+    // Page dimensions for calculations
+    const pageWidth = doc.page.width;
+    const pageHeight = doc.page.height;
+    const leftMargin = 60;
+    const rightMargin = pageWidth - 60;
+    const contentWidth = rightMargin - leftMargin;
+    
+    // Professional header with emerald theme
+    doc.rect(0, 0, pageWidth, 100).fill(primaryColor);
+    
+    // Company name
+    doc.fillColor('white')
+       .fontSize(28)
+       .font('Times-Bold')
+       .text('PLATORA', leftMargin, 25);
+    
+    doc.fontSize(12)
+       .font('Times-Roman')
+       .text('Digital Wallet & Payment Solutions', leftMargin, 58);
+    
+    // Statement title - right aligned
+    doc.fontSize(24)
+       .font('Times-Bold')
+       .text('STATEMENT', rightMargin - 150, 25, { width: 150, align: 'right' });
+    
+    doc.fontSize(10)
+       .font('Times-Roman')
+       .text('Custom Period Report', rightMargin - 150, 55, { width: 150, align: 'right' });
+    
+    let currentY = 130;
+    
+    // Statement period and account info header
+    doc.fillColor(textDark)
+       .fontSize(16)
+       .font('Times-Bold')
+       .text('Statement Information', leftMargin, currentY);
+    
+    currentY += 25;
+    
+    // Create two-column layout
+    const leftColumnX = leftMargin;
+    const rightColumnX = leftMargin + (contentWidth / 2) + 30;
+    const labelWidth = 100;
+    const valueStartX = leftColumnX + labelWidth;
+    
+    // Left column - Statement details
+    let leftY = currentY;
+    
+    // Statement Period
+    doc.fontSize(10)
+       .font('Times-Bold')
+       .fillColor(textMedium)
+       .text('Statement Period:', leftColumnX, leftY);
+    
+    doc.font('Times-Roman')
+       .fillColor(textDark)
+       .text('Custom Date Range', valueStartX, leftY);
+    
+    leftY += 18;
+    
+    // Date Range
+    doc.font('Times-Bold')
+       .fillColor(textMedium)
+       .text('Date Range:', leftColumnX, leftY);
+    
+    doc.font('Times-Roman')
+       .fillColor(textDark)
+       .text(`${start.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })}`, valueStartX, leftY);
+    
+    leftY += 18;
+    
+    // Statement ID - REALISTIC FORMAT
+    doc.font('Times-Bold')
+       .fillColor(textMedium)
+       .text('Statement ID:', leftColumnX, leftY);
+    
+    // Generate realistic statement ID: STMT-USERID-YYYYMMDD-YYYYMMDD
+    const startFormatted = startDate.replace(/-/g, '');
+    const endFormatted = endDate.replace(/-/g, '');
+    const statementId = `STMT-${userId}-${startFormatted}-${endFormatted}`;
+    
+    doc.font('Times-Roman')
+       .fillColor(textDark)
+       .text(statementId, valueStartX, leftY, {
+         width: contentWidth / 2 - labelWidth - 10,
+         ellipsis: true
+       });
+    
+    // Right column - Account information
+    let rightY = currentY;
+    
+    doc.fontSize(16)
+       .font('Times-Bold')
+       .fillColor(textDark)
+       .text('Account Information', rightColumnX, rightY - 25);
+    
+    const rightLabelWidth = 80;
+    const rightValueStartX = rightColumnX + rightLabelWidth;
+    
+    // Account Name
+    doc.fontSize(10)
+       .font('Times-Bold')
+       .fillColor(textMedium)
+       .text('Name:', rightColumnX, rightY);
+    
+    doc.font('Times-Roman')
+       .fillColor(textDark)
+       .text(`${user.first_name || ''} ${user.last_name || ''}`.trim() || 'N/A', rightValueStartX, rightY, {
+         width: rightMargin - rightValueStartX - 10,
+         ellipsis: true
+       });
+    
+    rightY += 18;
+    
+    // Email
+    doc.font('Times-Bold')
+       .fillColor(textMedium)
+       .text('Email:', rightColumnX, rightY);
+    
+    doc.font('Times-Roman')
+       .fillColor(textDark)
+       .text(user.email || 'N/A', rightValueStartX, rightY, { 
+         width: rightMargin - rightValueStartX - 10,
+         ellipsis: true 
+       });
+    
+    rightY += 18;
+    
+    // Account ID
+    doc.font('Times-Bold')
+       .fillColor(textMedium)
+       .text('Account ID:', rightColumnX, rightY);
+    
+    doc.font('Times-Roman')
+       .fillColor(textDark)
+       .text(userId.toString(), rightValueStartX, rightY);
+    
+    currentY = Math.max(leftY, rightY) + 35;
+    
+    // Summary statistics calculation - FIXED NaN ISSUES
+    const totalTransactions = transactions.length || 0;
+    const coinsSpent = Math.abs(transactions.filter(t => t.transaction_type === 'SPEND').reduce((sum, t) => sum + (parseFloat(t.amount_coins) || 0), 0));
+    const coinsPurchased = transactions.filter(t => t.transaction_type === 'PURCHASE').reduce((sum, t) => sum + (parseFloat(t.amount_coins) || 0), 0);
+    const totalRefunds = transactions.filter(t => t.transaction_type === 'REFUND').reduce((sum, t) => sum + (parseFloat(t.amount_coins) || 0), 0);
+    const netBalance = coinsPurchased - coinsSpent + totalRefunds;
+    
+    // Professional summary section
+    doc.fontSize(16)
+       .font('Times-Bold')
+       .fillColor(textDark)
+       .text('Period Summary', leftMargin, currentY);
+    
+    currentY += 25;
+    
+    // Summary boxes with professional styling - FIXED NaN
+    const boxWidth = 120;
+    const boxHeight = 45;
+    const boxSpacing = 15;
+    
+    const summaryData = [
+      { label: 'Total Transactions', value: totalTransactions, color: accentColor },
+      { label: 'Coins Purchased', value: Math.round(coinsPurchased), color: successColor },
+      { label: 'Coins Spent', value: Math.round(coinsSpent), color: '#dc2626' },
+      { label: 'Net Balance', value: Math.round(netBalance), color: textDark }
+    ];
+    
+    summaryData.forEach((item, index) => {
+      const x = leftMargin + index * (boxWidth + boxSpacing);
+      
+      // Professional box styling
+      doc.rect(x, currentY, boxWidth, boxHeight)
+         .fill('#f8fafc')
+         .stroke('#e2e8f0');
+      
+      // Value - FIXED: Check for valid numbers
+      const displayValue = (typeof item.value === 'number' && !isNaN(item.value)) 
+        ? item.value.toLocaleString() 
+        : '0';
+      
+      doc.fillColor(item.color)
+         .fontSize(16)
+         .font('Times-Bold')
+         .text(displayValue, x + 10, currentY + 8, { 
+           width: boxWidth - 20, 
+           align: 'center' 
+         });
+      
+      // Label
+      doc.fillColor(textMedium)
+         .fontSize(9)
+         .font('Times-Roman')
+         .text(item.label, x + 10, currentY + 30, { 
+           width: boxWidth - 20, 
+           align: 'center' 
+         });
+    });
+    
+    currentY += boxHeight + 35;
+    
+    // Transaction history section
+    doc.fontSize(16)
+       .font('Times-Bold')
+       .fillColor(textDark)
+       .text('Transaction History', leftMargin, currentY);
+    
+    currentY += 25;
+    
+    if (transactions.length > 0) {
+      // FINAL OPTIMIZED TABLE - REDUCED DESCRIPTION, VISIBLE STATUS
+      const tableStartY = currentY;
+      const headerHeight = 28;
+      const rowHeight = 22;
+      const maxRowsPerPage = 20;
+      
+      // Column definitions - FINAL OPTIMIZED WIDTHS
+      // Date: 55, Description: 130 (reduced), Type: 70, Amount: 60, Value: 90, Status: 85 (increased for "COMPLETED")
+      const colWidths = [55, 130, 70, 60, 90, 85];
+      
+      // Function to draw table header
+      const drawTableHeader = (y) => {
+        // Table header background
+        doc.rect(leftMargin, y, contentWidth, headerHeight)
+           .fillAndStroke('#e5e7eb', '#9ca3af');
+        
+        let colX = leftMargin + 8;
+        
+        doc.fillColor(textDark)
+           .fontSize(9)
+           .font('Times-Bold');
+        
+        const headers = ['Date', 'Description', 'Type', 'Amount', 'Value', 'Status'];
+        
+        headers.forEach((header, index) => {
+          doc.text(header, colX, y + 9, { 
+            width: colWidths[index] - 8, 
+            align: 'left' 
+          });
+          colX += colWidths[index];
+        });
+        
+        return y + headerHeight;
+      };
+      
+      // Draw initial table header
+      let rowY = drawTableHeader(tableStartY);
+      let rowCount = 0;
+      
+      // Process all transactions with pagination
+      transactions.forEach((transaction, index) => {
+        // Check if we need a new page
+        if (rowCount >= maxRowsPerPage) {
+          doc.addPage();
+          rowY = 60;
+          rowY = drawTableHeader(rowY);
+          rowCount = 0;
+        }
+        
+        // Row background - alternating colors
+        const rowColor = index % 2 === 0 ? '#ffffff' : '#f9fafb';
+        doc.rect(leftMargin, rowY, contentWidth, rowHeight)
+           .fillAndStroke(rowColor, '#e5e7eb');
+        
+        let colX = leftMargin + 8;
+        
+        // Date
+        doc.fillColor(textDark)
+           .fontSize(9)
+           .font('Times-Roman')
+           .text(new Date(transaction.created_at).toLocaleDateString('en-US', {
+             month: 'short',
+             day: 'numeric'
+           }), colX, rowY + 7);
+        colX += colWidths[0];
+        
+        // Description - REDUCED WIDTH
+        const description = (transaction.description || 'Transaction').substring(0, 22) + 
+                           ((transaction.description || '').length > 22 ? '...' : '');
+        doc.text(description, colX, rowY + 7, { width: colWidths[1] - 8 });
+        colX += colWidths[1];
+        
+        // Type with color
+        const typeColor = transaction.transaction_type === 'PURCHASE' ? successColor : 
+                         transaction.transaction_type === 'SPEND' ? '#dc2626' : accentColor;
+        
+        doc.fillColor(typeColor)
+           .fontSize(9)
+           .font('Times-Bold')
+           .text(transaction.transaction_type || 'N/A', colX, rowY + 7);
+        colX += colWidths[2];
+        
+        // Amount with sign and color
+        const coins = parseFloat(transaction.amount_coins) || 0;
+        const coinSign = coins >= 0 ? '+' : '';
+        
+        doc.fillColor(typeColor)
+           .fontSize(9)
+           .font('Times-Bold')
+           .text(`${coinSign}${Math.round(coins)}`, colX, rowY + 7);
+        colX += colWidths[3];
+
+        // Value - CALCULATE FOR SPEND AND REFUND TRANSACTIONS (coins * 50)
+        if (transaction.transaction_type === 'SPEND' || transaction.transaction_type === 'REFUND') {
+          const calculatedValue = Math.abs(parseFloat(transaction.amount_coins) || 0) * 50;
+          doc.fillColor(textMedium)
+            .fontSize(9)
+            .font('Times-Roman')
+            .text(`LKR ${calculatedValue.toFixed(2)}`, colX, rowY + 7, { width: colWidths[4] - 8 });
+        } else if (transaction.amount_money && parseFloat(transaction.amount_money) > 0) {
+          doc.fillColor(textMedium)
+            .fontSize(9)
+            .font('Times-Roman')
+            .text(`${transaction.currency || 'LKR'} ${parseFloat(transaction.amount_money).toFixed(2)}`, 
+                  colX, rowY + 7, { width: colWidths[4] - 8 });
+        } else {
+          doc.fillColor(textLight)
+            .text('-', colX, rowY + 7);
+        }
+        colX += colWidths[4];
+        
+        // Status - INCREASED WIDTH TO SHOW "COMPLETED"
+        const statusColor = transaction.status === 'COMPLETED' ? successColor : 
+                           transaction.status === 'PENDING' ? warningColor : '#dc2626';
+        
+        doc.fillColor(statusColor)
+           .fontSize(8)
+           .font('Times-Bold')
+           .text(transaction.status || 'COMPLETED', colX, rowY + 8, {
+             width: colWidths[5] - 8
+           });
+        
+        rowY += rowHeight;
+        rowCount++;
+      });
+      
+      currentY = rowY + 20;
+      
+    } else {
+      // No transactions message
+      doc.rect(leftMargin, currentY, contentWidth, 50)
+         .fill('#f9fafb')
+         .stroke('#e5e7eb');
+      
+      doc.fillColor(textMedium)
+         .fontSize(12)
+         .font('Times-Italic')
+         .text('No transactions found for this period.', leftMargin, currentY + 18, { 
+           width: contentWidth, 
+           align: 'center' 
+         });
+      
+      currentY += 70;
+    }
+    
+    // Finalize PDF
+    doc.end();
+    
+  } catch (error) {
+    console.error('Custom statement generation error:', error);
+    
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to generate statement',
+        error: error.message
+      });
+    }
   }
 };

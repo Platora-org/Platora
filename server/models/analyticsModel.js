@@ -511,3 +511,17 @@ export const getAdminTransactionCount = async (filters = {}) => {
     return 0;
   }
 };
+
+export const getUserTransactionsByDateRange = async (userId, startDate, endDate) => {
+  const query = `
+    SELECT * FROM transactions
+    WHERE user_id = $1 
+      AND created_at >= $2 
+      AND created_at <= $3
+      AND status = 'COMPLETED'
+    ORDER BY created_at DESC
+  `;
+  
+  const result = await pool.query(query, [userId, startDate, endDate]);
+  return result.rows;
+};

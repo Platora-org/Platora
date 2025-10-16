@@ -63,6 +63,7 @@ import {
   generateTransactionInvoice,
   generateMonthlyStatement,
   generateAdminStatement,
+  generateCustomStatement,
   getAdminTransactions
 } from '../controllers/analyticsController.js';
 import verifyJWT from "../middleware/verifyToken.js";
@@ -462,6 +463,7 @@ router.get('/analytics/dashboard', verifyJWT, getDashboardAnalytics);
 router.get('/analytics/trends', verifyJWT, getTransactionTrends);
 router.get('/analytics/customers', verifyJWT, getCustomerSpendingAnalytics);
 router.get('/analytics/export', verifyJWT, exportTransactions);
+router.get('/statement/custom', verifyJWT, generateCustomStatement);
 
 // Admin transaction routes
 router.get('/admin/transactions', verifyJWT, checkRole("admin"), getAdminTransactions);
