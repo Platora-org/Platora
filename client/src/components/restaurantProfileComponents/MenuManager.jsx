@@ -386,15 +386,20 @@ const MenuManager = ({ menu = [], categories = [], onCreate, onUpdate, onDelete 
   const [editing, setEditing] = useState(null);
 
   const filtered = useMemo(
-    () =>
-      menu.filter(
-        (m) =>
-          (!category || m.category_id == category) &&
-          (m.name.toLowerCase().includes(filter.toLowerCase()) ||
-            (m.description || "").toLowerCase().includes(filter.toLowerCase()))
-      ),
-    [menu, filter, category]
-  );
+  () =>
+    menu.filter((m) => {
+      const nameMatch =
+        !filter ||
+        m.name.toLowerCase().startsWith(filter.toLowerCase());
+      const descMatch =
+        !filter ||
+        (m.description || "").toLowerCase().startsWith(filter.toLowerCase());
+      const categoryMatch = !category || m.category_id == category;
+      return categoryMatch && (nameMatch || descMatch);
+    }),
+  [menu, filter, category]
+);
+
 
   const openCreate = () => {
     setEditing(null);

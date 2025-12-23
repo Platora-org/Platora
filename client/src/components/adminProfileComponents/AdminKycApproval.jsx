@@ -13,6 +13,7 @@ const AdminKYCDashboard = () => {
   const [processing, setProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState("pending");
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchField, setSearchField] = useState("name");
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -23,6 +24,14 @@ const AdminKYCDashboard = () => {
     { id: "approved", label: "Approved", status: "APPROVED", color: "emerald" },
     { id: "rejected", label: "Rejected", status: "REJECTED", color: "red" },
     { id: "all", label: "All", status: null, color: "gray" }
+  ];
+
+  const searchFields = [
+    { value: "name", label: "Name" },
+    { value: "email", label: "Email" },
+    { value: "tin", label: "TIN Number" },
+    { value: "bank_account", label: "Bank Account" },
+    { value: "phone", label: "Phone" }
   ];
 
   // Fetch KYC requests
@@ -65,11 +74,9 @@ const AdminKYCDashboard = () => {
       );
       
       setSuccessMessage("KYC approved successfully!");
-      // Remove from pending list or refresh the current tab
       const tab = tabs.find(t => t.id === activeTab);
       fetchKYCRequests(tab?.status);
       
-      // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (error) {
       console.error("Error approving KYC:", error);
@@ -95,14 +102,12 @@ const AdminKYCDashboard = () => {
       );
       
       setSuccessMessage("KYC rejected successfully!");
-      // Refresh the current tab
       const tab = tabs.find(t => t.id === activeTab);
       fetchKYCRequests(tab?.status);
       setShowRejectModal(false);
       setSelectedKYC(null);
       setRejectionReason("");
       
-      // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (error) {
       console.error("Error rejecting KYC:", error);
@@ -112,16 +117,70 @@ const AdminKYCDashboard = () => {
     }
   };
 
-  // Filter KYC requests based on search
+  // Enhanced filter function with field-specific search and prioritization
   const filteredRequests = kycRequests.filter(kyc => {
+    if (!searchTerm.trim()) return true;
+    
     const searchLower = searchTerm.toLowerCase();
-    return (
-      kyc.first_name?.toLowerCase().includes(searchLower) ||
-      kyc.last_name?.toLowerCase().includes(searchLower) ||
-      kyc.email?.toLowerCase().includes(searchLower) ||
-      kyc.tin_number?.includes(searchTerm) ||
-      kyc.bank_account_number?.includes(searchTerm)
-    );
+    let fieldValue = '';
+    
+    switch(searchField) {
+      case 'name':
+        fieldValue = `${kyc.first_name || ''} ${kyc.last_name || ''}`.toLowerCase();
+        break;
+      case 'email':
+        fieldValue = (kyc.email || '').toLowerCase();
+        break;
+      case 'tin':
+        fieldValue = (kyc.tin_number || '').toLowerCase();
+        break;
+      case 'bank_account':
+        fieldValue = (kyc.bank_account_number || '').toLowerCase();
+        break;
+      case 'phone':
+        fieldValue = (kyc.phone || '').toLowerCase();
+        break;
+      default:
+        return true;
+    }
+    
+    return fieldValue.startsWith(searchLower) || fieldValue.includes(searchLower);
+  }).sort((a, b) => {
+    if (!searchTerm.trim()) return 0;
+    
+    const searchLower = searchTerm.toLowerCase();
+    let aValue = '';
+    let bValue = '';
+    
+    switch(searchField) {
+      case 'name':
+        aValue = `${a.first_name || ''} ${a.last_name || ''}`.toLowerCase();
+        bValue = `${b.first_name || ''} ${b.last_name || ''}`.toLowerCase();
+        break;
+      case 'email':
+        aValue = (a.email || '').toLowerCase();
+        bValue = (b.email || '').toLowerCase();
+        break;
+      case 'tin':
+        aValue = (a.tin_number || '').toLowerCase();
+        bValue = (b.tin_number || '').toLowerCase();
+        break;
+      case 'bank_account':
+        aValue = (a.bank_account_number || '').toLowerCase();
+        bValue = (b.bank_account_number || '').toLowerCase();
+        break;
+      case 'phone':
+        aValue = (a.phone || '').toLowerCase();
+        bValue = (b.phone || '').toLowerCase();
+        break;
+    }
+    
+    const aStarts = aValue.startsWith(searchLower);
+    const bStarts = bValue.startsWith(searchLower);
+    
+    if (aStarts && !bStarts) return -1;
+    if (!aStarts && bStarts) return 1;
+    return 0;
   });
 
   // View document
@@ -160,6 +219,17 @@ const AdminKYCDashboard = () => {
       )
     };
     return badges[status] || null;
+  };
+
+  const getPlaceholder = () => {
+    const placeholders = {
+      name: "Search by name...",
+      email: "Search by email...",
+      tin: "Search by TIN number...",
+      bank_account: "Search by bank account...",
+      phone: "Search by phone..."
+    };
+    return placeholders[searchField] || "Search...";
   };
 
   return (
@@ -240,20 +310,52 @@ const AdminKYCDashboard = () => {
           </div>
         )}
 
-        {/* Search Bar */}
+        {/* Enhanced Search Bar with Field Selector */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search by name, email, TIN, or bank account..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-            <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+          <div className="flex gap-3">
+            <select
+              value={searchField}
+              onChange={(e) => {
+                setSearchField(e.target.value);
+                setSearchTerm('');
+              }}
+              className="px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 min-w-[160px]"
+            >
+              {searchFields.map(field => (
+                <option key={field.value} value={field.value}>
+                  {field.label}
+                </option>
+              ))}
+            </select>
+            
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder={getPlaceholder()}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="px-4 py-3 bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-700 dark:text-white rounded-xl transition-colors"
+              >
+                Clear
+              </button>
+            )}
           </div>
+          
+          {searchTerm && (
+            <p className="mt-3 text-sm text-gray-600 dark:text-gray-400">
+              Showing results for <span className="font-semibold">{searchFields.find(f => f.value === searchField)?.label}</span> starting with "<span className="font-semibold">{searchTerm}</span>" (prioritized) and containing this term
+            </p>
+          )}
         </div>
 
         {/* Main Content */}
@@ -268,7 +370,7 @@ const AdminKYCDashboard = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               <p className="text-gray-600 dark:text-gray-400 text-lg">
-                No KYC applications found
+                {searchTerm ? `No KYC applications found matching "${searchTerm}"` : "No KYC applications found"}
               </p>
             </div>
           ) : (
@@ -369,7 +471,6 @@ const AdminKYCDashboard = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex gap-2">
-                          {/* Only show Approve/Reject buttons for PENDING status */}
                           {kyc.status === 'PENDING' && (
                             <>
                               <button
@@ -392,7 +493,6 @@ const AdminKYCDashboard = () => {
                             </>
                           )}
                           
-                          {/* Always show History button */}
                           <button
                             onClick={() => {
                               setSelectedKycIdForHistory(kyc.id);

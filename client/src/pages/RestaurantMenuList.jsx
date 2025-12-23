@@ -51,33 +51,31 @@ function MenuPage() {
 
     //  Filter + Sort combined
     const filteredAndSortedItems = useMemo(() => {
-        let items = menuItems.filter((item) =>
-            item.name.toLowerCase().includes(filter.toLowerCase())
-        );
+    let items = menuItems.filter((item) => {
+        // Show all if filter is empty
+        if (!filter.trim()) return true;
+        return item.name.toLowerCase().startsWith(filter.toLowerCase());
+    });
 
-        switch (sortBy) {
-            case "name-asc":
-                items = [...items].sort((a, b) =>
-                    a.name.localeCompare(b.name)
-                );
-                break;
-            case "name-desc":
-                items = [...items].sort((a, b) =>
-                    b.name.localeCompare(a.name)
-                );
-                break;
-            case "price-asc":
-                items = [...items].sort((a, b) => a.price - b.price);
-                break;
-            case "price-desc":
-                items = [...items].sort((a, b) => b.price - a.price);
-                break;
-            default:
-                break;
-        }
+    switch (sortBy) {
+        case "name-asc":
+            items = [...items].sort((a, b) => a.name.localeCompare(b.name));
+            break;
+        case "name-desc":
+            items = [...items].sort((a, b) => b.name.localeCompare(a.name));
+            break;
+        case "price-asc":
+            items = [...items].sort((a, b) => a.price - b.price);
+            break;
+        case "price-desc":
+            items = [...items].sort((a, b) => b.price - a.price);
+            break;
+        default:
+            break;
+    }
 
-        return items;
-    }, [menuItems, filter, sortBy]);
+    return items;
+}, [menuItems, filter, sortBy]);
 
     const navigate = useNavigate();
     const handleBack = () => {

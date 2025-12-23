@@ -1094,7 +1094,7 @@ CREATE TABLE orders (
   type VARCHAR(20) DEFAULT 'pickup',  -- pickup or delivery
   status VARCHAR(20) DEFAULT 'pending',  -- pending, completed, cancelled
   total_amount NUMERIC(10,2) NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE restaurant_orders (

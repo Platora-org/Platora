@@ -1070,9 +1070,9 @@ CREATE TABLE IF NOT EXISTS reservation_tables (
 
 INSERT INTO reservation_time_slots (label, sort_idx, start_time) VALUES
 ('10:00 AM - 12:00 PM', 1, TIME '10:00:00'),
-('12:00 PM - 2:00 PM', 2, TIME '12:00:00'),
-('2:00 PM - 4:00 PM', 3, TIME '14:00:00'),
-('4:00 PM - 6:00 PM', 4, TIME '16:00:00'),
+('12:30 PM - 2:30 PM', 2, TIME '12:30:00'),
+('3:00 PM - 5:00 PM', 3, TIME '15:00:00'),
+('5:30 PM - 7:30 PM', 4, TIME '17:30:00'),
 ('6:00 PM - 8:00 PM', 5, TIME '18:00:00'),
 ('8:00 PM - 10:00 PM', 6, TIME '20:00:00');
 

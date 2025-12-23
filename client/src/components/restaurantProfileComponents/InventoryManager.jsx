@@ -128,10 +128,14 @@ const InventoryManager = ({ inventory, onCreate, onUpdate, onDelete, onAdjust })
   const [editing, setEditing] = useState(null);
   const [showHistory, setShowHistory] = useState(false); // 👈 toggle for adjustments history
 
-  const filtered = useMemo(
-    () => inventory.filter((i) => i.name.toLowerCase().includes(filter.toLowerCase())),
-    [inventory, filter]
-  );
+ const filtered = useMemo(
+  () =>
+    inventory.filter((i) =>
+      i.name.toLowerCase().startsWith(filter.toLowerCase())
+    ),
+  [inventory, filter]
+);
+
 
   const openCreate = () => { setEditing(null); setOpenModal(true); };
   const openEdit = (item) => { setEditing(item); setOpenModal(true); };

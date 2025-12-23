@@ -127,33 +127,54 @@ export default function AdminReservationList() {
   }, []);
 
   const filtered = useMemo(() => {
-    let out = [...rows];
-    if (status !== "all") out = out.filter((r) => r.status === status);
-    if (from) out = out.filter((r) => r.reserved_date >= from);
-    if (to) out = out.filter((r) => r.reserved_date <= to);
-    if (q) {
-      const k = q.toLowerCase();
-      out = out.filter((r) => {
-        const fields = [
-          r.id,
-          r.customer_name,
-          r.customer_email,
-          r.slot_label,
-          (r.tables || []).map((t) => t.table_code).join(", "),
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        return fields.includes(k);
-      });
-    }
-    out.sort((a, b) => {
-      const da = (a.reserved_date || "") + (a.slot_label || "");
-      const db = (b.reserved_date || "") + (b.slot_label || "");
-      return da < db ? 1 : da > db ? -1 : 0;
+  let out = [...rows];
+
+  // 1️⃣ Apply status filter
+  if (status !== "all") out = out.filter((r) => r.status === status);
+
+  // 2️⃣ Apply date range filters
+  if (from) out = out.filter((r) => r.reserved_date >= from);
+  if (to) out = out.filter((r) => r.reserved_date <= to);
+
+  // 3️⃣ Apply search filter
+  if (q) {
+    const k = q.toLowerCase().trim();
+
+    out = out.filter((r) => {
+      const name = (r.customer_name || "").toLowerCase();
+      const email = (r.customer_email || "").toLowerCase();
+      const uid = String(r.id || "").toLowerCase();
+      const slot = (r.slot_label || "").toLowerCase();
+      const tableCodes = (r.tables || [])
+        .map((t) => (t.table_code || "").toLowerCase())
+        .join(", ");
+
+      // If query looks like alphabetic text → assume name search
+      if (/^[a-z]+$/i.test(k)) {
+        // Match only names that START with the given letter(s)
+        return name.startsWith(k);
+      }
+
+      // Otherwise (email, uid, table code, etc.) → normal substring match
+      return (
+        uid.includes(k) ||
+        name.includes(k) ||
+        email.includes(k) ||
+        slot.includes(k) ||
+        tableCodes.includes(k)
+      );
     });
-    return out;
-  }, [rows, status, from, to, q]);
+  }
+
+  // 4️⃣ Sort by date descending
+  out.sort((a, b) => {
+    const da = (a.reserved_date || "") + (a.slot_label || "");
+    const db = (b.reserved_date || "") + (b.slot_label || "");
+    return da < db ? 1 : da > db ? -1 : 0;
+  });
+
+  return out;
+}, [rows, status, from, to, q]);
 
   const handleFromChange = (e) => {
   const value = e.target.value;
@@ -179,7 +200,7 @@ export default function AdminReservationList() {
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-1">Reservation List</h1>
       <p className="text-sm opacity-80 mb-4">
-        View all customer reservations. Cancellations appear with refund eligibility based on the 24-hour rule.
+        View all customer reservations. Cancellations appear with refund eligibility based on the 12 -hour rule.
       </p>
       
 
@@ -251,7 +272,7 @@ export default function AdminReservationList() {
     </div>
     <div>
       <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-        Admin Reports & Analytics
+        Reservation Reports & Analytics
       </h2>
       <p className="text-sm text-gray-600 dark:text-gray-400">
         Generate comprehensive PDF reports for the selected date range
