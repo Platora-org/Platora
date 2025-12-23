@@ -4,14 +4,14 @@ Platora is a full-featured, scalable Food Court Management System built using th
 
 ---
 
-## 🚀 Purpose & Scope
+## Purpose & Scope
 
 - **Primary goal:** Provide an internal, role-driven platform for a food court to manage day-to-day operations efficiently: orders, reservations, inventory, payouts, and auditing.
 - **Intended audience:** Food court administrators, restaurant managers/staff, inventory staff, cashiers, delivery personnel, and support/finance teams.
 
 ---
 
-## 🔑 Major Functions (Quick Overview)
+## Major Functions (Quick Overview)
 
 - **User & Role Management** — accounts, roles, permissions, KYC and verifications.
 - **Restaurant (Tenant) Management** — profiles, menus, plate/recipes, availability.
@@ -28,56 +28,56 @@ Platora is a full-featured, scalable Food Court Management System built using th
 
 ---
 
-## 🧑‍🤝‍🧑 Roles & Duties (What each role does)
+## Roles & Duties (What each role does)
 
-### 1. **System Admin / Food Court Manager** ✅
+### 1. **System Admin / Food Court Manager** 
 
 - **Duties:** Global configuration, tenant onboarding & approval, payouts approval, blackout scheduling, analytics oversight, role assignment, system-wide reports.
 - **Workflow:** Approve tenants → set court rules & fees → configure blackouts/time slots → review analytics → approve payouts.
 
-### 2. **Restaurant Manager** 🏪
+### 2. **Restaurant Manager** 
 
 - **Duties:** Manage menu/catalog, set availability, configure items/recipes, view restaurant-level reports, receive orders and manage staff.
 - **Workflow:** Publish menu → receive orders → update order status → reconcile sales & inventory → request payouts.
 
-### 3. **Kitchen Staff / Chef** 🍳
+### 3. **Kitchen Staff / Chef** 
 
 - **Duties:** Manage order tickets, update preparation status (preparing, ready), maintain recipe/plate details.
 - **Workflow:** Accept ticket → prepare → mark ready → notify cashier/delivery.
 
-### 4. **Inventory Manager / Stock Keeper** 📦
+### 4. **Inventory Manager / Stock Keeper** 
 
 - **Duties:** Track stock, log adjustments, receive supplies, manage reorder alerts based on thresholds.
 - **Workflow:** Monitor stock → create purchase receipts → update inventory → reconcile discrepancies.
 
-### 5. **Cashier / Front-desk** 💳
+### 5. **Cashier / Front-desk** 
 
 - **Duties:** Process on-site orders and payments, manage reservation check-ins, process refunds.
 - **Workflow:** Receive customer → confirm order/reservation → accept payment → print receipt and update system.
 
-### 6. **Delivery Agent** 🚚
+### 6. **Delivery Agent** 
 
 - **Duties:** Accept delivery tasks, update delivery status (picked up, in transit, delivered), handle delivery issues.
 - **Workflow:** Receive assignment → pickup → deliver → update completion → customer feedback.
 
-### 7. **Customer (User)** 👥
+### 7. **Customer (User)** 
 
 - **Duties:** Browse menus, place orders, make reservations, use wallet, request refunds or support.
 - **Workflow:** Sign up → browse → place order or reserve → pay → collect/delivery → rate/feedback.
 
-### 8. **KYC / Verification Team** 🕵️‍♀️
+### 8. **KYC / Verification Team** 
 
 - **Duties:** Validate tenant documents, approve onboarding.
 - **Workflow:** Review documents → approve/reject → notify tenant & admin.
 
-### 9. **Finance / Auditor** 📊
+### 9. **Finance / Auditor** 
 
 - **Duties:** Review transactions, run audits, reconcile payouts, check refund cases, examine security logs.
 - **Workflow:** Run reports → reconcile → sign off payouts → escalate discrepancies.
 
 ---
 
-## 🧭 Workflows (High-level sequences)
+## Workflows (High-level sequences)
 
 1. **Order Lifecycle**
 
@@ -175,3 +175,4 @@ VITE_API_BASE_URL=http://localhost:3000
 ---
 
 **- Team Platora**
+
